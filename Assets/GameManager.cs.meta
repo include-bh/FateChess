@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: e725620fcf77e1745ad1b43844cd8994
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - playerAtlas: {fileID: 100100200, guid: 0145e2623c2b20c4e86966c8eabbf2ab, type: 3}
+  - tilePrefab: {fileID: 6935836876057249926, guid: c5abbafd45f92b544a18d8f95cde8a97, type: 3}
+  - terrainAtlas: {fileID: 100100200, guid: 5fa2a0bc79aab074abfc2d440c64be4e, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
