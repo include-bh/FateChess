@@ -13,6 +13,7 @@ public class Tile : MonoBehaviour
     public bool isEditable;
     public void TryEdit()
     {
+        if (!isEditable) return;
         if (type == Terrain.Water) type = Terrain.Plain;
         else ++type;
     }

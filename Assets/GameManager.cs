@@ -25,10 +25,13 @@ public class GameManager : MonoBehaviour
     public SpriteAtlas playerAtlas;
 
     public GameObject tilePrefab;
+    public GameObject PlayerPrefab;
+    public GameObject AIPlayerPrefab;
+
     public Dictionary<(int x, int y), Tile> tiles = new Dictionary<(int x, int y), Tile>();
     public SpriteAtlas terrainAtlas;
 
-    private Terrain getRandType()
+    private Terrain GetRandType()
     {
         int x = Random.Range(0, 10);
         if (x <= 0) return Terrain.Water;
@@ -75,7 +78,7 @@ public class GameManager : MonoBehaviour
         DiscardPile.Add(card);
     }
 
-    public Tile getTile(int x, int y)
+    public Tile GetTile(int x, int y)
     {
         var key = (x, y);
         if (tiles.ContainsKey(key))
@@ -120,15 +123,17 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
-        // 确保只有一个实例
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject); // 跨场景保持
-        }
+        if (Instance != null && Instance != this)
+            Destroy(gameObject);
         else
+            Instance = this;
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
         {
-            Destroy(gameObject); // 销毁重复实例
+            Instance = null;
         }
     }
     // Start is called before the first frame update
@@ -150,15 +155,15 @@ public class GameManager : MonoBehaviour
         //生成棋盘
         for (int i = 0; i < 7; i++)
         {
-            AddTile(0 + dx[i], 0 + dy[i], getRandType(), i == 6);
-            AddTile(2 + dx[i], 1 + dy[i], getRandType(), i == 6);
-            AddTile(-1 + dx[i], 3 + dy[i], getRandType(), i == 6);
-            AddTile(-3 + dx[i], 2 + dy[i], getRandType(), i == 6);
-            AddTile(-2 + dx[i], -1 + dy[i], getRandType(), i == 6);
-            AddTile(1 + dx[i], -3 + dy[i], getRandType(), i == 6);
-            AddTile(3 + dx[i], -2 + dy[i], getRandType(), i == 6);
+            AddTile(0 + dx[i], 0 + dy[i], GetRandType(), i == 6);
+            AddTile(2 + dx[i], 1 + dy[i], GetRandType(), i == 6);
+            AddTile(-1 + dx[i], 3 + dy[i], GetRandType(), i == 6);
+            AddTile(-3 + dx[i], 2 + dy[i], GetRandType(), i == 6);
+            AddTile(-2 + dx[i], -1 + dy[i], GetRandType(), i == 6);
+            AddTile(1 + dx[i], -3 + dy[i], GetRandType(), i == 6);
+            AddTile(3 + dx[i], -2 + dy[i], GetRandType(), i == 6);
         }
-        foreach(var x in tiles.Values)
+        foreach (var x in tiles.Values)
             x.isEditable = false;
     }
 
