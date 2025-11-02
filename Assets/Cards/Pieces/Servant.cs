@@ -4,29 +4,16 @@ using UnityEngine;
 
 public class Servant : Piece
 {
-    // Start is called before the first frame update
-    public void Attack(Piece e)
+    public Weapon equip;
+    public override void OnDeath()
     {
-        int x = AT;
-        if (e.DF > x)
+        if (equip != null)
         {
-            e.DF -= x;
+            equip.gameObject.SetActive(false);
+            GameManager.Instance.DiscardCard(equip);
+            equip = null;
         }
-        else
-        {
-            x -= e.DF;
-            e.DF = 0;
-            EventManager.TriggerOnBreak(this,e);
-            if (e.HP > x)
-            {
-                e.HP -= x;
-            }
-            else
-            {
-                e.HP = 0;
-                EventManager.TriggerOnKill(this,e);
-                enabled = false;
-            }
-        }
+        base.OnDeath();
     }
+
 }

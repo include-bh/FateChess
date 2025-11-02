@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using TMPro;
 public class Piece : Card
@@ -22,15 +23,18 @@ public class Piece : Card
         transform.rotation = Quaternion.Euler(0,0,GameManager.Instance.GetRotation(facing));
         if (GameManager.Instance.playerAtlas != null && playerRend != null)
         {
-            string bgName = $"Player{belong}";
+            string bgName = $"Player{belong.id}";
             playerRend.sprite = GameManager.Instance.playerAtlas.GetSprite(bgName);
         }
 
         HPText.text = HP.ToString();
-        ATText.text = AT.ToString();
         DFText.text = DF.ToString();
-        RAText.text = RA.ToString();
-        STText.text = ST.ToString();
+        if (ST != 0) STText.text = ST.ToString();
+        if (AT != 0)
+        {
+            ATText.text = AT.ToString();
+            RAText.text = RA.ToString();
+        }
     }
     [Header("基础属性")]
     public int maxHP;
@@ -54,11 +58,10 @@ public class Piece : Card
     public bool canSwim;
     public bool canBanMagic;
     [Header("归属")]
-    public int belong;
+    public Player belong;
     public SpriteRenderer playerRend;
     [Header("战时")]
     public bool hasActed;
-    public Weapon equip;
 
     /*
         public Transform HPpos, ATpos, DFpos, RApos, STpos;
@@ -69,45 +72,34 @@ public class Piece : Card
         public EffectDebuff DebuffPrefab;
     */
 
-    protected HashSet<(int, int)> canGoTo;
-    protected List<(int,int)> canHit;
+    public HashSet<(int, int)> vis, canGoTo, canHit;
 
-    protected virtual void dfs(int dep, int x, int y)
+    public virtual void dfsMove(int dep, int x, int y)
     {
-        Tile curTile = GameManager.Instance.getTile(x, y);
+        if (vis.Contains((x, y))) return;
+        vis.Add((x, y));
+        Tile curTile = GameManager.Instance.GetTile(x, y);
         if (curTile.onTile == null)
             canGoTo.Add((x, y));
-        else
-        {
-            if (curTile.onTile is Vehicle ve)
-            {
-                if (ve.belong == this.belong && ve.onLoad.Count < 3)
-                    canGoTo.Add((x, y));
-            }
-            if (curTile.onTile is UnitBase ub)
-            {
-                if (ub.belong == this.belong && ub.onLoad.Count < 1)
-                    canGoTo.Add((x, y));
-            }
-        }
+        else if (curTile.onTile is LoadAble ve && ve.onLoad.Count < ve.capacity)
+            canGoTo.Add((x, y));
         if (dep != 0)
         {
             for (int i = 0; i < 6; i++)
             {
                 int nx = x + dx[i], ny = y + dy[i];
-                Tile newTile = GameManager.Instance.getTile(nx, ny);
+                Tile newTile = GameManager.Instance.GetTile(nx, ny);
                 if (newTile == null) continue;
                 if (newTile.onTile != null)
                 {
                     if (newTile.onTile.belong != this.belong) continue;
-                    if (newTile.onTile is Vehicle ve && ve.onLoad.Count < 3) dfs(dep - 1, nx, ny);
-                    else if (newTile.onTile is UnitBase ub && ub.onLoad.Count < 1) dfs(dep - 1, nx, ny);
+                    if (newTile.onTile is LoadAble ve && ve.onLoad.Count < ve.capacity) dfsMove(dep - 1, nx, ny);
                     else
                     {
                         if (newTile.type == Terrain.Water && canSwim == false) continue;
                         int newdep = dep - 1;
                         if (newTile.type == Terrain.Hill && canClimb == false) newdep = 0;
-                        dfs(newdep, nx, ny);
+                        dfsMove(newdep, nx, ny);
                     }
                 }
                 else
@@ -115,7 +107,7 @@ public class Piece : Card
                     if (newTile.type == Terrain.Water && canSwim == false) continue;
                     int newdep = dep - 1;
                     if (newTile.type == Terrain.Hill && canClimb == false) newdep = 0;
-                    dfs(newdep, nx, ny);
+                    dfsMove(newdep, nx, ny);
                 }
             }
         }
@@ -123,23 +115,47 @@ public class Piece : Card
 
     public virtual void Move()
     {
-        canGoTo.Clear();
-        dfs(ST, xpos, ypos);
+        vis.Clear();canGoTo.Clear();
+        dfsMove(ST, xpos, ypos);
+        var (nx, ny) = belong.SelectPosition(new List<(int, int)>(canGoTo));
+        xpos = nx;ypos = ny;
+        var nf = belong.SelectDirection();
+        facing = nf;
     }
 
-    public virtual void Attack()
+    public virtual void dfsHit(int dep, int x, int y)
     {
-        for(int i = -RA; i <= RA; i++)
+        if (vis.Contains((x, y))) return;
+        vis.Add((x, y));
+        Tile curTile = GameManager.Instance.GetTile(x, y);
+        if (curTile != null)
+            canHit.Add((x, y));
+        if (dep != 0)
         {
-            for(int j = Math.Max(-RA, -i - RA); j <= Math.Min(RA, -i + RA); j++)
+            for (int i = 0; i < 6; i++)
             {
-                int nx = xpos + i;
-                int ny = ypos + j;
-                canHit.Add((nx, ny));
+                int nx = x + dx[i], ny = y + dy[i];
+                Tile newTile = GameManager.Instance.GetTile(nx, ny);
+                dfsHit(dep - 1, nx, ny);
             }
         }
     }
-    public void Damage(int x)
+    public virtual void Hit()
+    {
+        vis.Clear(); canHit.Clear();
+        dfsHit(RA - 1, xpos + dx[facing], ypos + dy[facing]);
+        dfsHit(RA - 1, xpos + dx[(facing + 1) % 6], ypos + dy[(facing + 1) % 6]);
+        Piece e = belong.SelectTarget(new List<(int, int)>(canHit));
+        if (e != null) Attack(e);
+    }
+    
+    public virtual void Attack(Piece e)
+    {
+        EventManager.TriggerOnAttack(this, e);
+        e.TakeDamage(AT);
+    }
+
+    public virtual void TakeDamage(int x)
     {
         if (DF > x)
         {
@@ -156,14 +172,57 @@ public class Piece : Card
             else
             {
                 HP = 0;
-                enabled = false;
+                OnDeath();
             }
         }
     }
-    public void RoundBegin()
+
+    public virtual void OnDeath()
+    {
+        Tile tile = GameManager.Instance.GetTile(xpos, ypos);
+        tile.onTile = null;
+        gameObject.SetActive(false);
+        GameManager.Instance.DiscardCard(this);
+    }
+
+    public virtual void RoundBegin()
     {
         DF = maxDF;
         hasActed = false;
+    }
+    
+    public void ForceMove()
+    {
+        Tile curTile = GameManager.Instance.GetTile(xpos, ypos);
+        if (curTile.type != Terrain.Water || canSwim)
+        { curTile.onTile = this; return; }
+        curTile.onTile = null;
+        List<Tile> buf = new List<Tile>();
+        for (int i = 0; i < 6; i++)
+        {
+            Tile t = GameManager.Instance.GetTile(xpos + dx[i], ypos + dy[i]);
+            if (t != null) buf.Add(t);
+        }
+        buf = buf.OrderBy(tile =>
+        {
+            if (canSwim && tile.type == Terrain.Water) return 0;
+            if (canClimb && tile.type == Terrain.Hill) return canSwim ? 1 : 0;
+            if (tile.type == Terrain.Plain) return canSwim ? (canClimb ? 2 : 1) : (canClimb ? 1 : 0);
+            if (tile.type == Terrain.Hill) return canSwim ? 2 : 1;
+            return 2;
+        }
+        ).ToList();
+
+        for (int i = 0; i < buf.Count; i++)
+        {
+            if (!canSwim && buf[i].type == Terrain.Water) continue;
+            if (buf[i].onTile == null)
+            {
+                buf[i].onTile = this;
+                return;
+            }
+        }
+        OnDeath();
     }
 
     

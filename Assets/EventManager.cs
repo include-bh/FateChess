@@ -9,6 +9,8 @@ public class EventManager : MonoBehaviour
     public static void TriggerOnKill(Piece a,Piece b){OnKill?.Invoke(a,b);}
     public static event Action<Piece, Piece> OnBreak;
     public static void TriggerOnBreak(Piece a,Piece b){OnBreak?.Invoke(a,b);}
+    public static event Action<Piece, Piece> OnAttack;
+    public static void TriggerOnAttack(Piece a,Piece b){OnAttack?.Invoke(a,b);}
 
     void Start()
     {

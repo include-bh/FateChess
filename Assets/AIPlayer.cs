@@ -2,17 +2,13 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class AIPlayer : MonoBehaviour
+public class AIPlayer : Player
 {
     // Start is called before the first frame update
-    void Start()
+    int AttackRate, DefenceRate;
+    public AIPlayer(int t=0, int Ad=1, int Dd=1) : base(t)
     {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
+        AttackRate = Ad;
+        DefenceRate = Dd;
     }
 }

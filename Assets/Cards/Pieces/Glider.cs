@@ -4,11 +4,25 @@ using UnityEngine;
 
 public class Glider : Vehicle
 {
-    
-    public void Move()
+    public override void Move()
     {
-        canGoTo.Clear();
+        
+    }
+    public override void Hit()
+    {
+        canHit.Clear();
         foreach (var x in GameManager.Instance.tiles.Keys)
-            canGoTo.Add(x);
+            canHit.Add(x);
+        var (nx, ny) = belong.SelectPosition(new List<(int, int)>(canHit));
+        Piece e = GameManager.Instance.GetTile(nx, ny).onTile;
+        xpos = nx;ypos = ny;
+        if (e != null)
+        {
+            e.TakeDamage(AT);
+            if (e is LoadAble ve)
+                foreach (Piece x in ve.onLoad)
+                    x.TakeDamage(AT);
+        }
+        OnDeath();
     }
 }
