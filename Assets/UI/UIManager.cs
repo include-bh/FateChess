@@ -16,16 +16,13 @@ public class UIManager : MonoBehaviour
     }
     [Header("玩家")]
     public Player curPlayer;
-    public Transform candCardsParent;
-    public Vector2 handCardSize;
-    public float handCardSpacing;
     [Header("按键")]
     public Button useCardButton;
     public Button skipTurnButton;
 
     [Header("视觉效果")]
     public TextMeshPro timer;
-    public ImageSpriteRenderer cmdCount;
+    public ImageSpriteRenderer CmdCnt;
     void Start()
     {
         SetupUI();
@@ -40,10 +37,17 @@ public class UIManager : MonoBehaviour
     {
         
     }
-    
+
     // Update is called once per frame
     void Update()
     {
-        
+
+    }
+    
+    void UpdateCmdCnt()
+    {
+        if (curPlayer.CommandCount <= 3)
+            CmdCnt.ChangeToSpriteByIndex(curPlayer.CommandCount);
+        else CmdCnt.ChangeToSpriteByIndex(3);
     }
 }

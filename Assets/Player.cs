@@ -2,9 +2,10 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+[System.Serializable]
 public class Player
 {
-    public int CommandCnt = 0;
+    public int CommandCount = 0;
     public List<Card> hand = new List<Card>();
     public int id, team;
     public Master master;

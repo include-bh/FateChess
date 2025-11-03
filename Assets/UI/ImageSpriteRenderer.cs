@@ -6,6 +6,7 @@ using UnityEngine.UI;
 public class ImageSpriteRenderer : MonoBehaviour
 {
     public Image targetImage;
+    public Sprite sprite => targetImage.sprite;
     public Sprite[] spriteArray;
     
     // 方法1：通过公共引用切换

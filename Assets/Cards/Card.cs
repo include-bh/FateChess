@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 public class Card : MonoBehaviour
 {
-    public SpriteRenderer rend;
+    public Image UIRend;
     public bool isSelected = false;
 
     public string cardName;
@@ -20,6 +20,7 @@ public class Card : MonoBehaviour
     
     public void Select()
     {
+        //GameManager.Instance.SelectCard(this);
         isSelected = true;
         // 可以添加选中效果，比如高亮边框
         transform.localScale = Vector3.one * 1.1f;
@@ -27,13 +28,15 @@ public class Card : MonoBehaviour
     
     public void Deselect()
     {
+        //GameManager.Instance.DeselectCard(this);
         isSelected = false;
         transform.localScale = Vector3.one;
     }
 
     public void OnClick()
     {
-        //GameManager.Instance.ToggleCardSelection(this);
+        if (isSelected) isSelected = false;
+        else isSelected = true;
     }
     
     public virtual void UseCard(Player usr)
@@ -41,13 +44,13 @@ public class Card : MonoBehaviour
         
     }
 
-    void Start()
+    public virtual void Start()
     {
         
     }
 
     // Update is called once per frame
-    void Update()
+    public virtual void Update()
     {
         
     }
