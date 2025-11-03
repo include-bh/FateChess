@@ -2290,6 +2290,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   typeDropdown: {fileID: 8979201488971388139}
   teamDropdown: {fileID: 5195737178737152865}
+  text: {fileID: 3693156841628152787}
   data:
     team: 1
     type: 0
@@ -2306,7 +2307,7 @@ GameObject:
   - component: {fileID: 3186043462783893909}
   - component: {fileID: 3693156841628152787}
   m_Layer: 5
-  m_Name: Text (TMP)
+  m_Name: Name
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2359,7 +2360,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\u73A9\u5BB61"
+  m_text: "\u73A9\u5BB6"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: a8d740a8a45da234fb61ced290a25f5a, type: 2}
   m_sharedMaterial: {fileID: 7905979915160423480, guid: a8d740a8a45da234fb61ced290a25f5a, type: 2}

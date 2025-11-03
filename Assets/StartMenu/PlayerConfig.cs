@@ -7,6 +7,7 @@ public class PlayerConfig : MonoBehaviour
 {
     public TMP_Dropdown typeDropdown;
     public TMP_Dropdown teamDropdown;
+    public TMP_Text text;
 
     public PlayerConfigData data;
     public int id;

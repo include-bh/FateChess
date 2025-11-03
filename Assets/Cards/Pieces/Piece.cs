@@ -11,22 +11,35 @@ public class Piece : Card
     public static readonly int[] dy = { 0, 1, 1, 0, -1, -1, 0 };
 
     // Start is called before the first frame update
-    public void Start()
+    public override void Start()
     {
-
+        BoardRend.enabled = false;
+        BoardRend.sprite = UIRend.sprite;
     }
 
     // Update is called once per frame
-    public void Update()
+    public override void Update()
+    {
+        
+
+        
+    }
+
+    void UpdatePosition()
     {
         transform.position = GameManager.Instance.GetPosition(xpos, ypos);
-        transform.rotation = Quaternion.Euler(0,0,GameManager.Instance.GetRotation(facing));
-        if (GameManager.Instance.playerAtlas != null && playerRend != null)
+        transform.rotation = Quaternion.Euler(0, 0, GameManager.Instance.GetRotation(facing));
+    }
+    void UpdateTeam()
+    {
+        if (GameManager.Instance.playerAtlas != null && PlayerRend != null)
         {
             string bgName = $"Player{belong.id}";
-            playerRend.sprite = GameManager.Instance.playerAtlas.GetSprite(bgName);
+            PlayerRend.sprite = GameManager.Instance.playerAtlas.GetSprite(bgName);
         }
-
+    }
+    void UpdateData()
+    {
         HPText.text = HP.ToString();
         DFText.text = DF.ToString();
         if (ST != 0) STText.text = ST.ToString();
@@ -36,6 +49,7 @@ public class Piece : Card
             RAText.text = RA.ToString();
         }
     }
+
     [Header("基础属性")]
     public int maxHP;
     public int HP;
@@ -59,7 +73,8 @@ public class Piece : Card
     public bool canBanMagic;
     [Header("归属")]
     public Player belong;
-    public SpriteRenderer playerRend;
+    public SpriteRenderer BoardRend;
+    public SpriteRenderer PlayerRend;
     [Header("战时")]
     public bool hasActed;
 
@@ -121,6 +136,7 @@ public class Piece : Card
         xpos = nx;ypos = ny;
         var nf = belong.SelectDirection();
         facing = nf;
+        UpdatePosition();
     }
 
     public virtual void dfsHit(int dep, int x, int y)
@@ -152,10 +168,10 @@ public class Piece : Card
     public virtual void Attack(Piece e)
     {
         EventManager.TriggerOnAttack(this, e);
-        e.TakeDamage(AT);
+        e.TakeDamage(this,AT);
     }
 
-    public virtual void TakeDamage(int x)
+    public virtual void TakeDamage(Piece e,int x)
     {
         if (DF > x)
         {
@@ -165,6 +181,7 @@ public class Piece : Card
         {
             x -= DF;
             DF = 0;
+            EventManager.TriggerOnBreak(e,this);
             if (HP > x)
             {
                 HP -= x;
@@ -172,6 +189,7 @@ public class Piece : Card
             else
             {
                 HP = 0;
+                EventManager.TriggerOnKill(e,this);
                 OnDeath();
             }
         }
@@ -219,6 +237,7 @@ public class Piece : Card
             if (buf[i].onTile == null)
             {
                 buf[i].onTile = this;
+                UpdatePosition();
                 return;
             }
         }
@@ -228,6 +247,7 @@ public class Piece : Card
     
     public override void UseCard(Player usr)
     {
-        
+        UIRend.enabled = false;
+        BoardRend.enabled = true;
     }
 }

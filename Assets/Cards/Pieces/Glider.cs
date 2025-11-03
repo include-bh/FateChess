@@ -18,10 +18,10 @@ public class Glider : Vehicle
         xpos = nx;ypos = ny;
         if (e != null)
         {
-            e.TakeDamage(AT);
+            e.TakeDamage(this,AT);
             if (e is LoadAble ve)
                 foreach (Piece x in ve.onLoad)
-                    x.TakeDamage(AT);
+                    x.TakeDamage(this,AT);
         }
         OnDeath();
     }

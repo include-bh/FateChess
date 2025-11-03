@@ -25,21 +25,11 @@ public class GameManager : MonoBehaviour
     public SpriteAtlas playerAtlas;
 
     public GameObject tilePrefab;
-    public GameObject PlayerPrefab;
-    public GameObject AIPlayerPrefab;
 
     public Dictionary<(int x, int y), Tile> tiles = new Dictionary<(int x, int y), Tile>();
     public SpriteAtlas terrainAtlas;
 
-    private Terrain GetRandType()
-    {
-        int x = Random.Range(0, 10);
-        if (x <= 0) return Terrain.Water;
-        if (x <= 2) return Terrain.Hill;
-        return Terrain.Plain;
-    }
-
-    void FlushCard()
+    public void FlushCard()
     {
         int n = DiscardPile.Count;
         CardPile.Clear();
@@ -135,41 +125,5 @@ public class GameManager : MonoBehaviour
         {
             Instance = null;
         }
-    }
-    // Start is called before the first frame update
-    void Start()
-    {
-        //初始化随机数
-        int seed = System.DateTime.Now.GetHashCode() ^
-                    System.Guid.NewGuid().GetHashCode() ^
-                    (int)(Time.realtimeSinceStartup * 1000);
-        Random.InitState(seed);
-
-        //生成牌堆
-        Card[] _cards = FindObjectsOfType<Card>();
-        DiscardPile = new List<Card>();
-        foreach (var x in _cards)
-            DiscardPile.Add(x);
-        FlushCard();
-
-        //生成棋盘
-        for (int i = 0; i < 7; i++)
-        {
-            AddTile(0 + dx[i], 0 + dy[i], GetRandType(), i == 6);
-            AddTile(2 + dx[i], 1 + dy[i], GetRandType(), i == 6);
-            AddTile(-1 + dx[i], 3 + dy[i], GetRandType(), i == 6);
-            AddTile(-3 + dx[i], 2 + dy[i], GetRandType(), i == 6);
-            AddTile(-2 + dx[i], -1 + dy[i], GetRandType(), i == 6);
-            AddTile(1 + dx[i], -3 + dy[i], GetRandType(), i == 6);
-            AddTile(3 + dx[i], -2 + dy[i], GetRandType(), i == 6);
-        }
-        foreach (var x in tiles.Values)
-            x.isEditable = false;
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-
     }
 }

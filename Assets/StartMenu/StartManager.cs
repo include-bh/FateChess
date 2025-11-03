@@ -8,7 +8,8 @@ using TMPro;
 
 public class StartManager : MonoBehaviour
 {
-    // Start is called before the first frame update
+    public static readonly int[] dx = { 1, 0, -1, -1, 0, 1, 0 };
+    public static readonly int[] dy = { 0, 1, 1, 0, -1, -1, 0 };
     public static StartManager Instance { get; private set; }
     private void Awake()
     {
@@ -129,20 +130,21 @@ public class StartManager : MonoBehaviour
         var teamList = new List<int>(existingTeams);
         teamList.Sort();
 
-        Debug.Log("[" + string.Join(", ", teamList) + "]");
-
         var Map = new Dictionary<int, int>();
         for (int i = 0; i < teamList.Count; i++) Map[teamList[i]] = i + 1;
         foreach (var cfg in players)
             cfg.data.team = Map[cfg.data.team];
 
-        int newTeamId = teamList.Count + 1;
-        teamList.Add(newTeamId);
 
         TeamOptions.Clear();
-        for (int i = 1; i < newTeamId; i++)
+        for (int i = 1; i <= teamList.Count; i++) 
             TeamOptions.Add($"队伍 {i}");
-        TeamOptions.Add($"新建队伍 {newTeamId}");
+        if (TeamOptions.Count < 4)
+        {
+            int newTeamId = teamList.Count + 1;
+            teamList.Add(newTeamId);
+            TeamOptions.Add($"新建队伍 {newTeamId}");
+        }
 
         foreach (var cfg in players)
             cfg.UpdateTeamDropdown();
@@ -153,15 +155,43 @@ public class StartManager : MonoBehaviour
         for (int i = 0; i < players.Count; i++)
         {
             players[i].id = i;
+            players[i].text.text = $"玩家{i+1}";
             RectTransform rect = players[i].gameObject.GetComponent<RectTransform>();
             rect.anchoredPosition = new Vector2(0, 260 - i * 150);
         }
     }
-    
+
     public void StartGame()
     {
+        if (players.Count < 2) return;
+        if (TeamOptions.Count < 3) return;
+        StartCoroutine(InitGameManager());
+    }
+    
+    
+    private Terrain GetRandType()
+    {
+        int x = UnityEngine.Random.Range(0, 10);
+        if (x <= 0) return Terrain.Water;
+        if (x <= 2) return Terrain.Hill;
+        return Terrain.Plain;
+    }
+
+    public IEnumerator InitGameManager()
+    {
+        //随机种子
+        int seed = System.DateTime.Now.GetHashCode() ^
+            System.Guid.NewGuid().GetHashCode() ^
+            (int)(Time.realtimeSinceStartup * 1000);
+        UnityEngine.Random.InitState(seed);
+
+        //场景切换
         List<PlayerConfigData> data = players.Select(x => x.data).ToList();
         SceneManager.LoadScene("GameScene");
+
+        yield return new WaitForSeconds(1f);
+
+        //初始化玩家
         foreach (var cfg in data)
         {
             if (cfg.type == PlayerType.Human)
@@ -175,6 +205,24 @@ public class StartManager : MonoBehaviour
         }
         for (int i = 0; i < GameManager.Instance.players.Count; i++)
             GameManager.Instance.players[i].id = i;
+
+        //生成牌堆
+        GameManager.Instance.DiscardPile = FindObjectsOfType<Card>().ToList();
+        GameManager.Instance.FlushCard();
+
+        //生成棋盘
+        for (int i = 0; i < 7; i++)
+        {
+            GameManager.Instance.AddTile(0 + dx[i], 0 + dy[i], GetRandType(), i == 6);
+            GameManager.Instance.AddTile(2 + dx[i], 1 + dy[i], GetRandType(), i == 6);
+            GameManager.Instance.AddTile(-1 + dx[i], 3 + dy[i], GetRandType(), i == 6);
+            GameManager.Instance.AddTile(-3 + dx[i], 2 + dy[i], GetRandType(), i == 6);
+            GameManager.Instance.AddTile(-2 + dx[i], -1 + dy[i], GetRandType(), i == 6);
+            GameManager.Instance.AddTile(1 + dx[i], -3 + dy[i], GetRandType(), i == 6);
+            GameManager.Instance.AddTile(3 + dx[i], -2 + dy[i], GetRandType(), i == 6);
+        }
+        foreach (var x in GameManager.Instance.tiles.Values)
+            x.isEditable = false;
     }
 }
 
