@@ -2,13 +2,14 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 public class LoadAble : Piece
 {
     public int capacity;
     public List<ICanOnLoad> onLoad;
-    public override async Task UseCard(Player usr)
+    public override async UniTask UseCard(Player usr)
     {
 
         HashSet<(int, int)> buf = new HashSet<(int, int)>();
@@ -25,7 +26,7 @@ public class LoadAble : Piece
         tile = GameManager.Instance.GetTile(xpos, ypos);
         tile.onTile = this;
     }
-    public override async Task Move()
+    public override async UniTask Move()
     {
         await base.Move();
         foreach(Servant x in onLoad)

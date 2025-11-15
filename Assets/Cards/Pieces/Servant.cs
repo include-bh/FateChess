@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 public class Servant : Piece,ICanOnLoad
@@ -88,7 +89,7 @@ public class Caster : Servant
         cardDescription = "进行连锁法术攻击的从者。\n攻击时，可以指定至多3个攻击目标。";
         sprite = GameManager.Instance.pieceAtlas.GetSprite("Caster");
     }
-    public override async Task Attack()
+    public override async UniTask Attack()
     {
         canHit.Clear();
         vis.Clear();

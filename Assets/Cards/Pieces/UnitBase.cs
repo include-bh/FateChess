@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 public class UnitBase : LoadAble
@@ -22,7 +23,7 @@ public class UnitBase : LoadAble
             }
         }
     }
-    public override async Task Move()
+    public override async UniTask Move()
     {
 
     }

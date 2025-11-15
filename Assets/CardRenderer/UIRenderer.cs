@@ -55,6 +55,7 @@ public class UIRenderer : CardRenderer, IPointerEnterHandler
             float t = flyEase.Evaluate(elapsed / flyDuration);
             float y = Mathf.Lerp(startY, targetY, t);
             rect.anchoredPosition = new Vector2(targetX, y);
+            yield return null;
         }
         rect.anchoredPosition = new Vector2(targetX, targetY);
         isFlying = false;

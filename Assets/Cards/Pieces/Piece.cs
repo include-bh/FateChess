@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using TMPro;
 
@@ -86,7 +87,7 @@ public class Piece : Card
         }
     }
 
-    public virtual async Task Move()
+    public virtual async UniTask Move()
     {
         vis.Clear(); canGoTo.Clear();
         dfsMove(ST, xpos, ypos);
@@ -125,7 +126,7 @@ public class Piece : Card
             }
         }
     }
-    public virtual async Task Attack()
+    public virtual async UniTask Attack()
     {
         vis.Clear(); canHit.Clear();
         dfsHit(RA - 1, xpos + dx[facing], ypos + dy[facing]);
@@ -215,7 +216,7 @@ public class Piece : Card
         else OnDeath();
     }
 
-    public override async Task UseCard(Player usr)
+    public override async UniTask UseCard(Player usr)
     {
         HashSet<(int, int)> buf = new HashSet<(int, int)>();
         foreach (Piece p in usr.onBoardList)
