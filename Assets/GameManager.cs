@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.EventSystems;
@@ -226,7 +227,7 @@ public class GameManager : MonoBehaviour
         StartGame();
     }
 
-    public async Task StartGame()
+    public async UniTask StartGame()
     {
         for (int i = 0; i < players.Count; i++)
         {

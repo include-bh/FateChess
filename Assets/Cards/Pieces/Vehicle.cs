@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 public class Vehicle : LoadAble
@@ -29,9 +30,9 @@ public class Vehicle : LoadAble
             }
         }
     }
-    public override Task Attack()
+    public override UniTask Attack()
     {
-        return Task.CompletedTask;
+        return UniTask.CompletedTask;
     }
 }
 
@@ -41,12 +42,12 @@ public class Truck : Vehicle
 
 public class Glider : Vehicle
 {
-    public override async Task Move()
+    public override async UniTask Move()
     {
         
     }
 
-    public override async Task Attack()
+    public override async UniTask Attack()
     {
         canGoTo.Clear();
         foreach (var x in GameManager.Instance.tiles.Keys)

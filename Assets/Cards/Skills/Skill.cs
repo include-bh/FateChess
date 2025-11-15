@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 public class Skill : Card
@@ -15,7 +16,7 @@ public class TuXi : Skill
         cardName = "奇兵突袭";
         sprite = GameManager.Instance.skillAtlas.GetSprite("TuXi");
     }
-    public override async Task UseCard(Player usr)
+    public override async UniTask UseCard(Player usr)
     {
         List<Piece> buf = usr.onBoardList
             .Where(p => (p is not UnitBase))

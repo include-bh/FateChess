@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 [System.Serializable]
@@ -14,19 +15,24 @@ public class AIPlayer : Player
         DefenceRate = Dd;
     }
 
-    public override async Task<(int, int)> SelectPosition(List<(int, int)> PosSet)
+    public override async UniTask<(int, int)> SelectPosition(List<(int, int)> PosSet)
     {
         return PosSet[0];
     }
 
-    public override async Task<int> SelectDirection(int xpos, int ypos)
+    public override async UniTask<int> SelectDirection(int xpos, int ypos)
     {
         return 0;
     }
     
-    public override async Task<Piece> SelectTarget(List<Piece> TargetSet)
+    public override async UniTask<Piece> SelectTarget(List<Piece> TargetSet)
     {
         return null;
     }
-
+    public virtual void OnMyTurn(int cmd)
+    {
+        GameManager.Instance.curPlayer = this;
+        CommandCount = cmd;
+        foreach (Piece x in onBoardList) x.OnTurnBegin();
+    }
 }

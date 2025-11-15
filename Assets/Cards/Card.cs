@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -33,7 +34,7 @@ public class Card
         isSelected = false;
     }
 
-    public virtual async Task UseCard(Player usr)
+    public virtual async UniTask UseCard(Player usr)
     {
 
     }

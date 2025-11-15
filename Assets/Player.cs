@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -28,10 +29,10 @@ public class Player
 
 
     public List<SelectPositionTag> PositionTags=new List<SelectPositionTag>();
-    public TaskCompletionSource<(int,int)> PositionTcs;
-    public virtual async Task<(int, int)> SelectPosition(List<(int, int)> PosSet)
+    public UniTaskCompletionSource<(int,int)> PositionTcs;
+    public virtual async UniTask<(int, int)> SelectPosition(List<(int, int)> PosSet)
     {
-        PositionTcs = new TaskCompletionSource<(int, int)>();
+        PositionTcs = new UniTaskCompletionSource<(int, int)>();
         foreach (var (x, y) in PosSet)
         {
             Vector2 pos = GameManager.Instance.GetPosition(x, y);
@@ -55,10 +56,10 @@ public class Player
 
 
     public List<SelectDirectionTag> DirectionTags=new List<SelectDirectionTag>();
-    public TaskCompletionSource<int> DirectionTcs;
-    public virtual async Task<int> SelectDirection(int xpos,int ypos)
+    public UniTaskCompletionSource<int> DirectionTcs;
+    public virtual async UniTask<int> SelectDirection(int xpos,int ypos)
     {
-        DirectionTcs = new TaskCompletionSource<int>();
+        DirectionTcs = new UniTaskCompletionSource<int>();
         Vector2 pos=GameManager.Instance.GetPosition(xpos,ypos);
         for (int i = 0; i < 6; i++)
         {
@@ -79,7 +80,7 @@ public class Player
 
         return res;
     }
-    public virtual async Task<Piece> SelectTarget(List<Piece> TargetSet)
+    public virtual async UniTask<Piece> SelectTarget(List<Piece> TargetSet)
     {
         return null;
     }
