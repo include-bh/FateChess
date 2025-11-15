@@ -165,65 +165,13 @@ public class StartManager : MonoBehaviour
     {
         if (players.Count < 2) return;
         if (TeamOptions.Count < 3) return;
-        StartCoroutine(InitGameManager());
-    }
-    
-    
-    private Terrain GetRandType()
-    {
-        int x = UnityEngine.Random.Range(0, 10);
-        if (x <= 0) return Terrain.Water;
-        if (x <= 2) return Terrain.Hill;
-        return Terrain.Plain;
-    }
-
-    public IEnumerator InitGameManager()
-    {
-        //随机种子
-        int seed = System.DateTime.Now.GetHashCode() ^
-            System.Guid.NewGuid().GetHashCode() ^
-            (int)(Time.realtimeSinceStartup * 1000);
-        UnityEngine.Random.InitState(seed);
 
         //场景切换
-        List<PlayerConfigData> data = players.Select(x => x.data).ToList();
+        PendingData = players.Select(x => x.data).ToList();
         SceneManager.LoadScene("GameScene");
-
-        yield return new WaitForSeconds(1f);
-
-        //初始化玩家
-        foreach (var cfg in data)
-        {
-            if (cfg.type == PlayerType.Human)
-                GameManager.Instance.players.Add(new Player(cfg.team));
-            if (cfg.type == PlayerType.AIBalanced)
-                GameManager.Instance.players.Add(new AIPlayer(cfg.team, 1, 1));
-            if (cfg.type == PlayerType.AIAttack)
-                GameManager.Instance.players.Add(new AIPlayer(cfg.team, 2, 1));
-            if (cfg.type == PlayerType.AIDefence)
-                GameManager.Instance.players.Add(new AIPlayer(cfg.team, 1, 2));
-        }
-        for (int i = 0; i < GameManager.Instance.players.Count; i++)
-            GameManager.Instance.players[i].id = i;
-
-        //生成牌堆
-        GameManager.Instance.DiscardPile = FindObjectsOfType<Card>().ToList();
-        GameManager.Instance.FlushCard();
-
-        //生成棋盘
-        for (int i = 0; i < 7; i++)
-        {
-            GameManager.Instance.AddTile(0 + dx[i], 0 + dy[i], GetRandType(), i == 6);
-            GameManager.Instance.AddTile(2 + dx[i], 1 + dy[i], GetRandType(), i == 6);
-            GameManager.Instance.AddTile(-1 + dx[i], 3 + dy[i], GetRandType(), i == 6);
-            GameManager.Instance.AddTile(-3 + dx[i], 2 + dy[i], GetRandType(), i == 6);
-            GameManager.Instance.AddTile(-2 + dx[i], -1 + dy[i], GetRandType(), i == 6);
-            GameManager.Instance.AddTile(1 + dx[i], -3 + dy[i], GetRandType(), i == 6);
-            GameManager.Instance.AddTile(3 + dx[i], -2 + dy[i], GetRandType(), i == 6);
-        }
-        foreach (var x in GameManager.Instance.tiles.Values)
-            x.isEditable = false;
     }
+
+    public static List<PlayerConfigData> PendingData;
 }
 
 [System.Serializable]

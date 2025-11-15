@@ -1,57 +1,53 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class Card : MonoBehaviour
+public class Card
 {
-    public Image UIRend;
     public bool isSelected = false;
-
     public string cardName;
+    public string cardDescription;
+    public CardStatus status;
+    public Sprite sprite;
+
+    public CardRenderer renderer;
 
     public Card()
     {
+        status = CardStatus.InPile;
+        isSelected = false;
+        renderer = null;
     }
-    public Card(string cardname)
-    {
-        cardName = cardname;
-    }
-    
+
     public void Select()
     {
         //GameManager.Instance.SelectCard(this);
         isSelected = true;
-        // 可以添加选中效果，比如高亮边框
-        transform.localScale = Vector3.one * 1.1f;
     }
-    
+
     public void Deselect()
     {
         //GameManager.Instance.DeselectCard(this);
         isSelected = false;
-        transform.localScale = Vector3.one;
     }
 
-    public void OnClick()
+    public virtual async Task UseCard(Player usr)
     {
-        if (isSelected) isSelected = false;
-        else isSelected = true;
-    }
-    
-    public virtual void UseCard(Player usr)
-    {
-        
-    }
 
-    public virtual void Start()
-    {
-        
     }
-
-    // Update is called once per frame
-    public virtual void Update()
+    public virtual string GetDescription()
     {
-        
+        return cardDescription;
     }
 }
+
+[System.Serializable]
+public enum CardStatus
+{
+    InPile,
+    InHand,
+    OnBoard,
+}
+

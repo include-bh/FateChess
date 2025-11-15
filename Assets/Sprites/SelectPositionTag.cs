@@ -1,0 +1,31 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.EventSystems;
+
+public class SelectPositionTag : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
+{
+    public int xpos,ypos;
+    public SpriteRenderer rend;
+    public Color defaultColor = new Color(1f, 0.5f, 0f);
+    public Color hoverColor = new Color(1f, 0.75f, 0.5f);
+    public Player player;
+
+
+    void Awake()
+    {
+        rend.color=defaultColor;
+    }
+    public void OnPointerEnter(PointerEventData ed)
+    {
+        rend.color=hoverColor;
+    }
+    public void OnPointerExit(PointerEventData ed)
+    {
+        rend.color=defaultColor;
+    }
+    public void OnPointerClick(PointerEventData ed)
+    {
+        player.PositionTcs?.TrySetResult((xpos, ypos));
+    }
+}

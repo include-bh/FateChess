@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 
 public class Vehicle : LoadAble
@@ -19,7 +20,7 @@ public class Vehicle : LoadAble
                 if (newTile == null) continue;
                 if (newTile.onTile != null)
                 {
-                    if (newTile.onTile.belong != this.belong) continue;
+                    if (newTile.onTile.player != this.player) continue;
                 }
                 if (newTile.type == Terrain.Water && canSwim == false) continue;
                 int newdep = dep - 1;
@@ -28,8 +29,41 @@ public class Vehicle : LoadAble
             }
         }
     }
-    public override void Hit()
+    public override Task Attack()
     {
+        return Task.CompletedTask;
+    }
+}
 
+public class Truck : Vehicle
+{
+}
+
+public class Glider : Vehicle
+{
+    public override async Task Move()
+    {
+        
+    }
+
+    public override async Task Attack()
+    {
+        canGoTo.Clear();
+        foreach (var x in GameManager.Instance.tiles.Keys)
+            canGoTo.Add(x);
+        var (nx, ny) = await player.SelectPosition(new List<(int, int)>(canGoTo));
+        tile.onTile = null;
+        foreach (Piece x in onLoad)
+            (x.xpos, x.ypos) = (nx, ny);
+
+        Piece e = GameManager.Instance.GetTile(nx, ny).onTile;
+        if (e != null)
+        {
+            DealDamage(e, AT, true);
+            if (e is LoadAble ve)
+                foreach (Piece x in ve.onLoad)
+                    DealDamage(x, AT, true);
+        }
+        OnDeath();
     }
 }
