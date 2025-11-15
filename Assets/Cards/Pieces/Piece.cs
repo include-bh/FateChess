@@ -2,82 +2,39 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using UnityEngine;
 using TMPro;
+
+[System.Serializable]
 public class Piece : Card
 {
-
     public static readonly int[] dx = { 1, 0, -1, -1, 0, 1, 0 };
     public static readonly int[] dy = { 0, 1, 1, 0, -1, -1, 0 };
 
-    // Start is called before the first frame update
-    public override void Start()
+    public Piece() : base()
     {
-        BoardRend.enabled = false;
-        BoardRend.sprite = UIRend.sprite;
+        canAct = true;
+        player = null;
+        tile = null;
     }
+    public int maxHP, HP, AT, maxDF, DF, RA, ST;
+    public int xpos, ypos, facing;
+    public bool canClimb, canSwim, canBanMagic, canRide;
+    public bool canAct;
 
-    // Update is called once per frame
-    public override void Update()
+    [NonSerialized]public Player player;
+    public Tile tile;
+
+
+    public void UpdateOnBoardPosition()
     {
-        
-
-        
+        if (tile == null) return;
+        if (xpos == tile.xpos && ypos == tile.ypos) return;
+        tile.onTile = null;
+        tile = GameManager.Instance.GetTile(xpos, ypos);
+        tile.onTile = this;
     }
-
-    void UpdatePosition()
-    {
-        transform.position = GameManager.Instance.GetPosition(xpos, ypos);
-        transform.rotation = Quaternion.Euler(0, 0, GameManager.Instance.GetRotation(facing));
-    }
-    void UpdateTeam()
-    {
-        if (GameManager.Instance.playerAtlas != null && PlayerRend != null)
-        {
-            string bgName = $"Player{belong.id}";
-            PlayerRend.sprite = GameManager.Instance.playerAtlas.GetSprite(bgName);
-        }
-    }
-    void UpdateData()
-    {
-        HPText.text = HP.ToString();
-        DFText.text = DF.ToString();
-        if (ST != 0) STText.text = ST.ToString();
-        if (AT != 0)
-        {
-            ATText.text = AT.ToString();
-            RAText.text = RA.ToString();
-        }
-    }
-
-    [Header("基础属性")]
-    public int maxHP;
-    public int HP;
-    public TextMeshPro HPText;
-    public int AT;
-    public TextMeshPro ATText;
-    public int maxDF;
-    public int DF;
-    public TextMeshPro DFText;
-    public int RA;
-    public TextMeshPro RAText;
-    public int ST;
-    public TextMeshPro STText;
-    [Header("位置")]
-    public int xpos;
-    public int ypos;
-    public int facing;
-    [Header("技能")]
-    public bool canClimb;
-    public bool canSwim;
-    public bool canBanMagic;
-    [Header("归属")]
-    public Player belong;
-    public SpriteRenderer BoardRend;
-    public SpriteRenderer PlayerRend;
-    [Header("战时")]
-    public bool hasActed;
-
     /*
         public Transform HPpos, ATpos, DFpos, RApos, STpos;
         public EffectDFDown DFDownPrefab;
@@ -87,7 +44,8 @@ public class Piece : Card
         public EffectDebuff DebuffPrefab;
     */
 
-    public HashSet<(int, int)> vis, canGoTo, canHit;
+    [NonSerialized]public HashSet<(int, int)> vis, canGoTo; 
+    [NonSerialized]public HashSet<Piece> canHit;
 
     public virtual void dfsMove(int dep, int x, int y)
     {
@@ -107,7 +65,7 @@ public class Piece : Card
                 if (newTile == null) continue;
                 if (newTile.onTile != null)
                 {
-                    if (newTile.onTile.belong != this.belong) continue;
+                    if (newTile.onTile.player != this.player) continue;
                     if (newTile.onTile is LoadAble ve && ve.onLoad.Count < ve.capacity) dfsMove(dep - 1, nx, ny);
                     else
                     {
@@ -128,15 +86,19 @@ public class Piece : Card
         }
     }
 
-    public virtual void Move()
+    public virtual async Task Move()
     {
-        vis.Clear();canGoTo.Clear();
+        vis.Clear(); canGoTo.Clear();
         dfsMove(ST, xpos, ypos);
-        var (nx, ny) = belong.SelectPosition(new List<(int, int)>(canGoTo));
+
+        var (nx, ny) = await player.SelectPosition(new List<(int, int)>(canGoTo));
         xpos = nx;ypos = ny;
-        var nf = belong.SelectDirection();
+        UpdateOnBoardPosition();
+
+        var nf = await player.SelectDirection(xpos,ypos);
         facing = nf;
-        UpdatePosition();
+
+        renderer.UpdateSprite();
     }
 
     public virtual void dfsHit(int dep, int x, int y)
@@ -145,7 +107,14 @@ public class Piece : Card
         vis.Add((x, y));
         Tile curTile = GameManager.Instance.GetTile(x, y);
         if (curTile != null)
-            canHit.Add((x, y));
+        {
+            if (curTile.onTile != null)
+            {
+                canHit.Add(curTile.onTile);
+                if (curTile.onTile is LoadAble ve)
+                    foreach (Piece p in ve.onLoad) canHit.Add(p);
+            }
+        }
         if (dep != 0)
         {
             for (int i = 0; i < 6; i++)
@@ -156,98 +125,148 @@ public class Piece : Card
             }
         }
     }
-    public virtual void Hit()
+    public virtual async Task Attack()
     {
         vis.Clear(); canHit.Clear();
         dfsHit(RA - 1, xpos + dx[facing], ypos + dy[facing]);
         dfsHit(RA - 1, xpos + dx[(facing + 1) % 6], ypos + dy[(facing + 1) % 6]);
-        Piece e = belong.SelectTarget(new List<(int, int)>(canHit));
-        if (e != null) Attack(e);
-    }
-    
-    public virtual void Attack(Piece e)
-    {
-        EventManager.TriggerOnAttack(this, e);
-        e.TakeDamage(this,AT);
+        Piece e = await player.SelectTarget(new List<Piece>(canHit));
+        if (e != null) DealDamage(e, AT);
     }
 
-    public virtual void TakeDamage(Piece e,int x)
+    public virtual void DealDamage(Piece e, int dmg, bool isPierce = false)
     {
-        if (DF > x)
+        EventManager.TriggerOnAttack(this, e);
+        e.TakeDamage(this, dmg, isPierce);
+    }
+
+    public virtual void TakeDamage(Piece e, int dmg, bool isPierce = false)
+    {
+        if (dmg < 0) dmg = 0;
+
+        if (!isPierce)
         {
-            DF -= x;
-        }
-        else
-        {
-            x -= DF;
-            DF = 0;
-            EventManager.TriggerOnBreak(e,this);
-            if (HP > x)
+            if (DF > dmg)
             {
-                HP -= x;
+                DF -= dmg;
+                return;
             }
             else
             {
-                HP = 0;
-                EventManager.TriggerOnKill(e,this);
-                OnDeath();
+                dmg -= DF;
+                DF = 0;
+                EventManager.TriggerOnBreak(e, this);
             }
         }
+        if (HP > dmg)
+        {
+            HP -= dmg;
+        }
+        else
+        {
+            HP = 0;
+            EventManager.TriggerOnKill(e, this);
+            OnDeath();
+        }
+        
     }
 
     public virtual void OnDeath()
     {
-        Tile tile = GameManager.Instance.GetTile(xpos, ypos);
+
         tile.onTile = null;
-        gameObject.SetActive(false);
         GameManager.Instance.DiscardCard(this);
     }
 
-    public virtual void RoundBegin()
+    public virtual void OnTurnBegin()
     {
         DF = maxDF;
-        hasActed = false;
+        canAct = true;
     }
-    
+
     public void ForceMove()
     {
-        Tile curTile = GameManager.Instance.GetTile(xpos, ypos);
-        if (curTile.type != Terrain.Water || canSwim)
-        { curTile.onTile = this; return; }
-        curTile.onTile = null;
         List<Tile> buf = new List<Tile>();
         for (int i = 0; i < 6; i++)
         {
             Tile t = GameManager.Instance.GetTile(xpos + dx[i], ypos + dy[i]);
-            if (t != null) buf.Add(t);
+            if (t != null)
+            {
+                if (canSwim || t.type != Terrain.Water)
+                    buf.Add(t);
+            }
         }
-        buf = buf.OrderBy(tile =>
+        buf = buf.OrderBy(til =>
         {
-            if (canSwim && tile.type == Terrain.Water) return 0;
-            if (canClimb && tile.type == Terrain.Hill) return canSwim ? 1 : 0;
-            if (tile.type == Terrain.Plain) return canSwim ? (canClimb ? 2 : 1) : (canClimb ? 1 : 0);
-            if (tile.type == Terrain.Hill) return canSwim ? 2 : 1;
-            return 2;
+            if (canSwim && til.type == Terrain.Water) return 0 + UnityEngine.Random.Range(0, 6);
+            if (canClimb && til.type == Terrain.Hill) return (canSwim ? 1 : 0) + UnityEngine.Random.Range(0, 6);
+            if (til.type == Terrain.Plain) return (canSwim ? (canClimb ? 2 : 1) : (canClimb ? 1 : 0)) + UnityEngine.Random.Range(0, 6);
+            if (til.type == Terrain.Hill) return (canSwim ? 2 : 1) + UnityEngine.Random.Range(0, 6);
+            return 2 + UnityEngine.Random.Range(0, 6);
         }
         ).ToList();
 
-        for (int i = 0; i < buf.Count; i++)
+        if (buf.Count > 0)
         {
-            if (!canSwim && buf[i].type == Terrain.Water) continue;
-            if (buf[i].onTile == null)
-            {
-                buf[i].onTile = this;
-                UpdatePosition();
-                return;
-            }
+            (xpos, ypos) = (buf[0].xpos, buf[0].ypos);
+            UpdateOnBoardPosition();
+            renderer.UpdateSprite();
         }
-        OnDeath();
+        else OnDeath();
     }
 
-    
-    public override void UseCard(Player usr)
+    public override async Task UseCard(Player usr)
     {
-        UIRend.enabled = false;
-        BoardRend.enabled = true;
+        HashSet<(int, int)> buf = new HashSet<(int, int)>();
+        foreach (Piece p in usr.onBoardList)
+            if (p is UnitBase)
+                for (int i = 0; i < 7; i++)
+                {
+                    Tile t = GameManager.Instance.GetTile(p.xpos + dx[i], p.ypos + dy[i]);
+                    if (t == null) continue;
+                    if (t.onTile == null) buf.Add((t.xpos, t.ypos));
+                    if(this is ICanOnLoad)
+                    {
+                        if (t.onTile is LoadAble ve)
+                        {
+                            if (ve.player == usr && ve.onLoad.Count < ve.capacity)
+                                buf.Add((t.xpos, t.ypos));
+                        }
+                    }
+                }
+
+        (xpos, ypos) = await usr.SelectPosition(buf.ToList());
+        facing = await usr.SelectDirection(xpos, ypos);
+        Tile targetTile = GameManager.Instance.GetTile(xpos, ypos);
+        if (targetTile.onTile == null)
+        {
+            tile = targetTile; tile.onTile = this;
+            GameObject go = GameObject.Instantiate(GameManager.Instance.BoardPiecePrefab);
+            renderer = go.GetComponent<BoardPieceRenderer>();
+            renderer.data = this;
+            renderer.UpdateSprite();
+        }
+        else if (this is ICanOnLoad load && targetTile.onTile is LoadAble ve)
+            ve.onLoad.Add(load);
     }
+
+    public override string GetDescription()
+    {
+        string res = cardDescription;
+        if (canClimb) res += "\n【攀爬】可以通过山地。";
+        if (canSwim) res += "\n【涉水】可以进入水域。";
+        if (canBanMagic) res += "\n【对魔力】可以停止Caster的连锁攻击。";
+        if (canRide) res += "\n【驾驶】可以不消耗令咒使所在载具行动。";
+        return res;
+    }
+}
+
+public interface ICanOnLoad
+{
+}
+public interface ICanBanMove
+{
+}
+public interface ICanBanWind
+{
 }

@@ -6,8 +6,8 @@ public class Tile : MonoBehaviour
 {
     public int xpos, ypos;
     public Terrain type;
-    public bool isCenter;
-    public Piece onTile;
+    public bool isCenter = false;
+    public Piece onTile = null;
 
     public SpriteRenderer terrainRend;
     public bool isEditable;

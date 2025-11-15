@@ -6,13 +6,14 @@ using UnityEngine.EventSystems;
 public class CameraController2D : MonoBehaviour
 {
     [Header("缩放设置")]
+    public bool enableZoom = true;
     public float zoomSpeed = 5f;
     public float minZoom = 1f;
     public float maxZoom = 15f;
 
     [Header("拖动设置")]
     public bool enableDrag = true;
-    public float dragSpeed = 2f;
+    public float dragSpeed = 1f;
 
     [Header("边界限制（可选）")]
     public bool useBounds = false;
@@ -20,7 +21,7 @@ public class CameraController2D : MonoBehaviour
     public Vector2 maxPosition = new Vector2(10f, 10f);
 
     private Camera cam;
-    private Vector2 lastInputPosition; // ✅ 统一用 Vector2
+    private Vector2 lastInputPosition;
     private bool isDragging = false;
 
     void Start()
@@ -60,16 +61,19 @@ public class CameraController2D : MonoBehaviour
     void HandleMouseInput()
     {
         // 滚轮缩放
-        float scroll = Input.GetAxis("Mouse ScrollWheel");
-        if (scroll != 0f)
+        if (enableZoom)
         {
-            if (!IsPointerOverUI())
+            float scroll = Input.GetAxis("Mouse ScrollWheel");
+            if (scroll != 0f)
             {
-                float newSize = cam.orthographicSize - scroll * zoomSpeed;
-                cam.orthographicSize = Mathf.Clamp(newSize, minZoom, maxZoom);
+                if (!IsPointerOverUI())
+                {
+                    float newSize = cam.orthographicSize - scroll * zoomSpeed;
+                    cam.orthographicSize = Mathf.Clamp(newSize, minZoom, maxZoom);
+                }
             }
         }
-
+        
         // 鼠标拖动
         if (enableDrag)
         {
@@ -78,14 +82,14 @@ public class CameraController2D : MonoBehaviour
                 if (!IsPointerOverUI())
                 {
                     isDragging = true;
-                    lastInputPosition = Input.mousePosition; // ✅ Vector2
+                    lastInputPosition = Input.mousePosition;
                 }
             }
 
             if (Input.GetMouseButton(0) && isDragging)
             {
                 Vector2 currentPos = Input.mousePosition;
-                Vector2 delta = currentPos - lastInputPosition; // ✅ Vector2 - Vector2
+                Vector2 delta = currentPos - lastInputPosition;
                 // 转换为世界坐标偏移
                 Vector3 worldDelta = cam.ScreenToWorldPoint(new Vector3(delta.x, delta.y, cam.nearClipPlane)) 
                                    - cam.ScreenToWorldPoint(new Vector3(0, 0, cam.nearClipPlane));
@@ -162,7 +166,21 @@ public class CameraController2D : MonoBehaviour
 
     bool IsPointerOverUI()
     {
-        return EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+        if (EventSystem.current == null) return false;
+        if (EventSystem.current.IsPointerOverGameObject()) return true;
+
+        Vector3 mouseScreenPos = Input.mousePosition;
+        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(mouseScreenPos);
+        Vector2 rayOrigin = new Vector2(mouseWorldPos.x, mouseWorldPos.y);
+        RaycastHit2D[] hits = Physics2D.RaycastAll(rayOrigin, Vector2.zero);
+
+        foreach (RaycastHit2D hit in hits)
+        {
+            GameObject go = hit.collider.gameObject;
+            CardRenderer rend = go.GetComponent<CardRenderer>();
+            if (rend != null) return true;
+        }
+        return false;
     }
 
     bool IsPointerOverUI(Vector2 position)
