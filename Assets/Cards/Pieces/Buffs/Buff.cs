@@ -18,10 +18,10 @@ public class Buff
 }
 public class Stun : Buff
 {
-    public Stun() : base()
+    public Stun(int x=1) : base()
     {
         id = 1001;
-        roundRemain = 1;
+        roundRemain = x;
         buffName = "禁锢";
         buffDescription = "无法行动。";
     }
@@ -34,7 +34,7 @@ public class DealDamageModifier : Buff
         id = 1002;
         rate = x;
         roundRemain = -1;
-        if (x > 0)
+        if (x >= 0)
         {
             buffName = "造成伤害提高";
             buffDescription = $"造成伤害提高{x}。";
@@ -55,7 +55,7 @@ public class TakeDamageModifier : Buff
         id = 1003;
         rate = x;
         roundRemain = -1;
-        if (x > 0)
+        if (x >= 0)
         {
             buffName = "受到伤害提高";
             buffDescription = $"受到伤害提高{x}。";
@@ -67,47 +67,4 @@ public class TakeDamageModifier : Buff
         }
     }
     public TakeDamageModifier() : this(0) { }
-}
-
-public class StepModifier : Buff
-{
-    public int rate;
-    public StepModifier(int x) : base()
-    {
-        id = 1004;
-        rate = x;
-        roundRemain = -1;
-        if (x > 0)
-        {
-            buffName = "移动力提高";
-            buffDescription = $"移动力提高{x}。";
-        }
-        else
-        {
-            buffName = "移动力降低";
-            buffDescription = $"移动力降低{-x}。";
-        }
-    }
-    public StepModifier() : this(0) { }
-}
-public class RangeModifier: Buff
-{
-    public int rate;
-    public RangeModifier(int x) : base()
-    {
-        id = 1005;
-        rate = x;
-        roundRemain = -1;
-        if (x > 0)
-        {
-            buffName = "攻击范围提高";
-            buffDescription = $"攻击范围提高{x}。";
-        }
-        else
-        {
-            buffName = "攻击范围降低";
-            buffDescription = $"攻击范围降低{-x}。";
-        }
-    }
-    public RangeModifier():this (0){}
 }

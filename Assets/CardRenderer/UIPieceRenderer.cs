@@ -1,5 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -8,16 +10,21 @@ public class UIPieceRenderer : UIRenderer,IPieceRenderer
 {
     public Image backgroundRenderer;
     public TextMeshProUGUI HPText, ATText, DFText, RAText, STText;
-    public override void UpdateSprite()
+
+    public async UniTask UpdatePosition()
     {
-        rend.sprite = data.sprite;
-        if(data is Piece piece)
+        rect.anchoredPosition = new Vector2(UIManager.UIXpos[pos], 10);
+    }
+
+    public async UniTask UpdateRotation()
+    {
+    }
+
+
+    public void UpdateData()
+    {
+        if (data is Piece piece)
         {
-            if (GameManager.Instance.playerAtlas != null)
-            {
-                string bgName = $"Player{piece.player.id}";
-                backgroundRenderer.sprite = GameManager.Instance.playerAtlas.GetSprite(bgName);
-            }
             HPText.text = piece.HP.ToString();
             DFText.text = piece.DF.ToString();
             if (piece.ST != 0) STText.text = piece.ST.ToString();
@@ -33,6 +40,21 @@ public class UIPieceRenderer : UIRenderer,IPieceRenderer
                 RAText.text = "";
             }
         }
+    }
+
+    public override async UniTask InitSprite()
+    {
+        rend.sprite = data.sprite;
+        rect.anchoredPosition = new Vector2(UIManager.UIXpos[pos], 10);
+        if (data is Piece piece)
+        {
+            if (GameManager.Instance.playerAtlas != null)
+            {
+                string bgName = $"Player{piece.player.id}";
+                backgroundRenderer.sprite = GameManager.Instance.playerAtlas.GetSprite(bgName);
+            }
+        }
+        UpdateData();
     }
 
 }

@@ -1,25 +1,27 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
-public class Tile : MonoBehaviour
+public class Tile : MonoBehaviour, IPointerClickHandler
 {
-    public int xpos, ypos;
-    public Terrain type;
+    public int xpos=0, ypos=0;
+    public Terrain type=Terrain.Plain;
     public bool isCenter = false;
     public Piece onTile = null;
 
     public SpriteRenderer terrainRend;
-    public bool isEditable;
-    public void TryEdit()
+    public bool isEditable = true;
+    public void OnPointerClick(PointerEventData eventData)
     {
         if (!isEditable) return;
         if (type == Terrain.Water) type = Terrain.Plain;
         else ++type;
+
+        UpdateSprite();
     }
-    public void Update()
+    public void UpdateSprite()
     {
-        transform.position = GameManager.Instance.GetPosition(xpos, ypos);
         if (GameManager.Instance.terrainAtlas != null && terrainRend != null)
         {
             string bgName = type.ToString();
@@ -42,6 +44,8 @@ public class Tile : MonoBehaviour
         this.isCenter = c;
         this.onTile = null;
         this.isEditable = true;
+        
+        transform.position = GameManager.GetPosition(xpos, ypos);
     }
 }
 

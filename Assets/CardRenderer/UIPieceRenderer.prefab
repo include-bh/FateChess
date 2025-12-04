@@ -573,6 +573,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   rend: {fileID: 5390879634923595932}
   pos: 0
+  rect: {fileID: 2536139326870719814}
   backgroundRenderer: {fileID: 9144671526847658475}
   HPText: {fileID: 445431261666411016}
   ATText: {fileID: 7132134831728975489}

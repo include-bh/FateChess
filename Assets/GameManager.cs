@@ -7,6 +7,9 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.EventSystems;
 using UnityEngine.U2D;
+
+public delegate int DamageModifier(int dmg, Piece atk, Piece def);
+
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
@@ -16,11 +19,29 @@ public class GameManager : MonoBehaviour
     public static readonly int[] dy = { 0, 1, 1, 0, -1, -1, 0 };
 
     public static readonly Vector2 ex = new Vector2(1f, (float)System.Math.Sqrt(3f));
-    public static readonly Vector2 ey = new Vector2(-1f,(float)System.Math.Sqrt(3f));
-    public Vector2 GetPosition(int x, int y)
+    public static readonly Vector2 ey = new Vector2(-1f, (float)System.Math.Sqrt(3f));
+
+    public static readonly Vector2[] SelectTargetPos =
+    {
+        new Vector2(0f,1f),
+        new Vector2(-(float)System.Math.Sqrt(3f)*0.5f, 0.5f),
+        new Vector2(-(float)System.Math.Sqrt(3f)*0.5f, -0.5f),
+        new Vector2(0f, -1f),
+        new Vector2((float)System.Math.Sqrt(3f)*0.5f, -0.5f),
+        new Vector2((float)System.Math.Sqrt(3f)*0.5f, 0.5f),
+    };
+    public static Vector2 GetPosition(int x, int y)
     { return ex * x + ey * y; }
-    public float GetRotation(int facing)
+    public static float GetRotation(int facing)
     { return 60f * facing; }
+
+    public static int HexDist(int x1, int y1, int x2, int y2)
+    {
+        int z1 = -x1 - y1;
+        int z2 = -x2 - y2;
+        return (Mathf.Abs(x1 - x2) + Mathf.Abs(y1 - y2) + Mathf.Abs(z1 - z2)) / 2;
+    }
+
 
     public List<Card> CardPile = new List<Card>();
     public List<Card> DiscardPile = new List<Card>();
@@ -38,11 +59,12 @@ public class GameManager : MonoBehaviour
     public Dictionary<(int x, int y), Tile> tiles = new Dictionary<(int x, int y), Tile>();
     public SpriteAtlas terrainAtlas;
 
-    
+
     public GameObject SelectPositionTagPrefab;
     public GameObject SelectDirectionTagPrefab;
     public GameObject BoardCardPrefab;
     public GameObject BoardPiecePrefab;
+    public GameObject AttackEffectPrefab;
 
     public Physics2DRaycaster raycaster;
 
@@ -75,11 +97,13 @@ public class GameManager : MonoBehaviour
         }
         Card tmp = CardPile[0];
         CardPile.RemoveAt(0);
+        tmp.status = CardStatus.InHand;
         return tmp;
     }
     public void DiscardCard(Card card)
     {
         if (card == null) return;
+        card.status = CardStatus.InPile;
         DiscardPile.Add(card);
     }
 
@@ -90,21 +114,18 @@ public class GameManager : MonoBehaviour
             return tiles[key];
         return null;
     }
-    public bool AddTile(int x, int y, Terrain typ, bool isCenter)
+    public Tile AddTile(int x, int y, Terrain typ, bool isCenter)
     {
         var key = (x, y);
-        if (tiles.ContainsKey(key)) return false;
-        if (tilePrefab != null)
-        {
-            GameObject newTileGO = Instantiate(tilePrefab);
-            newTileGO.name = $"Tile_{x}_{y}";
-            Tile newTile = newTileGO.GetComponent<Tile>();
-            newTile.xpos = x;newTile.ypos = y;newTile.type = typ;newTile.isCenter = isCenter;
-            newTile.onTile = null;
-            tiles[key] = newTile;
-            newTileGO.SetActive(true);
-        }
-        return true;
+        if (tiles.ContainsKey(key)) return null;
+        GameObject newTileGO = Instantiate(tilePrefab);
+        newTileGO.name = $"Tile_{x}_{y}";
+        Tile newTile = newTileGO.GetComponent<Tile>();
+        newTile.xpos = x; newTile.ypos = y; newTile.type = typ; newTile.isCenter = isCenter;
+        newTile.onTile = null;
+        tiles[key] = newTile;
+        newTileGO.SetActive(true);
+        return newTile;
     }
     public bool RemoveTile(int x, int y)
     {
@@ -112,24 +133,18 @@ public class GameManager : MonoBehaviour
         if (!tiles.ContainsKey(key)) return false;
         DiscardCard(tiles[key].onTile);
         Tile t = tiles[key];
-        Destroy(tiles[key].gameObject,0.01f);
+        Destroy(tiles[key].gameObject, 0.01f);
         tiles.Remove(key);
         return true;
     }
-    public bool AddBlock(int x, int y)
-    {
-        for (int i = 0; i < 7; i++)
-            if (tiles.ContainsKey((x + dx[i], y + dy[i]))) return false;
-        for (int i = 0; i < 7; i++)
-            AddTile(x + dx[i], y + dy[i], Terrain.Plain, i == 6);
-        return true;
-    }
+
     public bool MoveBlock(int x, int y, int xx, int yy, int facing)
     {
         for (int i = 0; i < 7; i++)
             if (!tiles.ContainsKey((x + dx[i], y + dy[i]))) return false;
         for (int i = 0; i < 7; i++)
             if (tiles.ContainsKey((xx + dx[i], yy + dy[i]))) return false;
+        List<Tile> buf = new List<Tile>();
         for (int i = 0; i < 6; i++)
         {
             var k1 = (x + dx[i], y + dy[i]);
@@ -145,7 +160,7 @@ public class GameManager : MonoBehaviour
         }
         return true;
     }
-    public bool RemoveBlock(int x,int y)
+    public bool RemoveBlock(int x, int y)
     {
         for (int i = 0; i < 7; i++)
             if (!tiles.ContainsKey((x + dx[i], y + dy[i]))) return false;
@@ -205,6 +220,44 @@ public class GameManager : MonoBehaviour
             DiscardPile.Add(new Assassin());
             DiscardPile.Add(new Berserker());
         }
+        for (int i = 0; i < 2; i++)
+        {
+            DiscardPile.Add(new Truck());
+            DiscardPile.Add(new Glider());
+            DiscardPile.Add(new Golem());
+
+            DiscardPile.Add(new TianJia());
+            DiscardPile.Add(new XiuGai());
+            DiscardPile.Add(new HuoQiu());
+            DiscardPile.Add(new GunMu());
+            DiscardPile.Add(new JuFeng());
+            DiscardPile.Add(new JinGu());
+            DiscardPile.Add(new TuXi());
+            DiscardPile.Add(new WuZhong());
+            DiscardPile.Add(new WuXie());
+        }
+
+        DiscardPile.Add(new XiuGai());
+        DiscardPile.Add(new YiDong());
+        DiscardPile.Add(new ZhuanYi());
+        DiscardPile.Add(new CeFan());
+
+
+        DiscardPile.Add(new ExCalibur());
+        DiscardPile.Add(new Avalon());
+        DiscardPile.Add(new UBW());
+        DiscardPile.Add(new GaeBolg());
+        DiscardPile.Add(new RuleBreaker());
+        DiscardPile.Add(new BloodFort());
+        DiscardPile.Add(new GodHand());
+        DiscardPile.Add(new Zabaniya());
+        DiscardPile.Add(new TrailBat());
+        DiscardPile.Add(new PyroLance());
+        DiscardPile.Add(new OverbreakHat());
+        DiscardPile.Add(new MemePen());
+        DiscardPile.Add(new CludeSpear());
+        DiscardPile.Add(new SunsetBow());
+
         FlushCard();
 
         //生成棋盘
@@ -233,6 +286,8 @@ public class GameManager : MonoBehaviour
         {
             Master mas = new Master();
             mas.player = players[i]; players[i].master = mas;
+            players[i].onBoardList.Add(mas);
+
             List<(int, int)> buf = new List<(int, int)>();
             foreach (var ((x, y), t) in tiles)
             {
@@ -247,23 +302,52 @@ public class GameManager : MonoBehaviour
             GameObject go = Instantiate(BoardPiecePrefab);
             mas.renderer = go.GetComponent<BoardPieceRenderer>();
             mas.renderer.data = mas;
-            mas.renderer.UpdateSprite();
+            mas.renderer.InitSprite();
 
             for (int j = 0; j < 4; j++)
-                players[i].hand.Add(DrawCard());
+            {
+                Card draw = DrawCard();
+                draw.player = players[i];
+                players[i].hand.Add(draw);
+            }
+            await players[i].InitUI();
         }
+
         bool is_first = true;
         for (int i = 0; ; i = (i + 1) % players.Count)
         {
-            players[i].OnMyTurn(is_first ? 2 : 3);
+            if (players[i].dead) continue;
+            await players[i].OnMyTurn(is_first ? 2 : 3);
             is_first = false;
         }
     }
-    
-    public void EndGame()
+
+    public void EndGame(int win)
     {
-        
+        UIManager.Instance.SwitchToDeathUI();
+        UIManager.Instance.DeathText.text = "";
+
         SceneManager.LoadScene("StartScene");
+    }
+
+    public async UniTask<bool> AskForWuXie(Skill skill, Player usr)
+    {
+        bool ok = true;
+        int las = usr.id;
+        List<int> buf = new List<int>();
+        for (int i = (usr.id + 1) % players.Count; i != las; i++)
+            if (!players[i].dead && players[i].hasWuXie())
+            {
+                if (await players[i].useWuXie(skill, usr, ok))
+                {
+                    ok = !ok;
+                    las = i;
+                    buf.Add(i);
+                    break;
+                }
+            }
+        foreach (int x in buf) players[x].UpdateHandCard();
+        return ok;
     }
 
     private void OnDestroy()
@@ -272,5 +356,29 @@ public class GameManager : MonoBehaviour
         {
             Instance = null;
         }
+    }
+
+
+    public void SetLose(Player player)
+    {
+        foreach (var x in player.onBoardList) x.OnDeath();
+        player.dead = true;
+        if (UIManager.Instance.curPlayer == player)
+        {
+            UIManager.Instance.DeathText.text = "";
+            UIManager.Instance.SwitchToDeathUI();
+        }
+
+        HashSet<int> teams = new HashSet<int>();
+        foreach (Player p in players)
+            if (p.dead == false) teams.Add(p.team);
+        if (teams.Count == 1)
+            foreach (int teamid in teams)
+                EndGame(teamid);
+    }
+    
+    public void Upgrade(Piece p1,Piece p2)
+    {
+        
     }
 }

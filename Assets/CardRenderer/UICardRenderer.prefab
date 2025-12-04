@@ -90,3 +90,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   rend: {fileID: 1569051772342912389}
   pos: 0
+  rect: {fileID: 7424845898171035325}
