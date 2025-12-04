@@ -2,23 +2,44 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Hero : Piece,ICanOnLoad,ICanBanMove
+public class Hero : Piece, ICanOnLoad
 {
-    public List<Weapon> equip;
+    public virtual void OnDeath()
+    {
+        if(tile!=null)tile.onTile = null;
+        player.onBoardList.Remove(this);
+        if (renderer != null && renderer is BoardRenderer brend)
+            brend.LeaveAnimation();
+        if (renderer != null)
+        {
+            GameObject.Destroy(renderer.gameObject);
+            renderer = null;
+        }
+    }
 }
 public class Arthuria : Hero
 {
-    public Arthuria():base()
+    public Arthuria() : base()
     {
         maxHP = HP = 12;
         AT = 7;
         maxDF = DF = 4;
         RA = 1;
         ST = 1;
-        canClimb = false;canSwim = false;canBanMagic = true;canRide = true;
+        canClimb = 0; canSwim = 0; canBanMagic = 1; canRide = 1;
         cardName = "阿尔托莉雅·潘德拉贡";
         cardDescription = "古不列颠传说中的亚瑟王，在圣杯战争中曾多次毁掉圣杯。";
         sprite = GameManager.Instance.pieceAtlas.GetSprite("Arthuria");
+    }
+    public override void InitCard()
+    {
+        base.InitCard();
+        maxHP = HP = 12;
+        AT = 7;
+        maxDF = DF = 4;
+        RA = 1;
+        ST = 1;
+        canClimb = 0; canSwim = 0; canBanMagic = 1; canRide = 1;
     }
 }
 public class Include : Hero
@@ -30,24 +51,44 @@ public class Include : Hero
         maxDF = DF = 3;
         RA = 2;
         ST = 2;
-        canClimb = true;canSwim = true;canBanMagic = true;canRide = false;
+        canClimb = 1;canSwim = 1;canBanMagic = 1;canRide = 0;
         cardName = "包涵·溯时之枪";
         cardDescription = "作者以男身被召唤的英灵，似乎拥有掌控时间的力量。";
         sprite = GameManager.Instance.pieceAtlas.GetSprite("Include");
+    }
+    public override void InitCard()
+    {
+        base.InitCard();
+        maxHP = HP = 10;
+        AT = 6;
+        maxDF = DF = 3;
+        RA = 2;
+        ST = 2;
+        canClimb = 1;canSwim = 1;canBanMagic = 1;canRide = 0;
     }
 }
 public class Sunsettia : Hero
 {
     public Sunsettia():base()
     {
+        base.InitCard();
         maxHP = HP = 10;
         AT = 5;
         maxDF = DF = 3;
         RA = 4;
         ST = 2;
-        canClimb = true;canSwim = true;canBanMagic = true;canRide = false;
+        canClimb = 1;canSwim = 1;canBanMagic = 1;canRide = 0;
         cardName = "春迟日落·裂空之箭";
         cardDescription = "作者以女身被召唤的英灵，似乎拥有撕裂空间的力量。";
         sprite = GameManager.Instance.pieceAtlas.GetSprite("Sunsettia");
+    }
+    public override void InitCard()
+    {
+        maxHP = HP = 10;
+        AT = 5;
+        maxDF = DF = 3;
+        RA = 4;
+        ST = 2;
+        canClimb = 1;canSwim = 1;canBanMagic = 1;canRide = 0;
     }
 }

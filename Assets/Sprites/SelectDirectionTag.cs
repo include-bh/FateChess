@@ -26,8 +26,6 @@ public class SelectDirectionTag : MonoBehaviour, IPointerClickHandler, IPointerE
     }
     public void OnPointerClick(PointerEventData ed)
     {
-        Debug.Log($"Click on SelectDirectionTag with facing {facing} 000000");
         player.DirectionTcs?.TrySetResult(facing);
-        Debug.Log($"Click on SelectDirectionTag with facing {facing} 111111");
     }
 }

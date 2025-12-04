@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -5,38 +6,39 @@ using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 
+[System.Serializable]
 public class Card
 {
-    public bool isSelected = false;
     public string cardName;
     public string cardDescription;
     public CardStatus status;
     public Sprite sprite;
 
-    public CardRenderer renderer;
+    public CardRenderer rend;
+    public virtual CardRenderer renderer
+    {
+        get => rend;
+        set => rend = value;
+    }
+    
+    [NonSerialized]public Player player;
 
     public Card()
     {
         status = CardStatus.InPile;
-        isSelected = false;
+        player = null;
+        renderer = null;
+    }
+    public virtual void InitCard()
+    {
+        status = CardStatus.InHand;
+        player = null;
         renderer = null;
     }
 
-    public void Select()
+    public virtual async UniTask<bool> UseCard(Player usr)
     {
-        //GameManager.Instance.SelectCard(this);
-        isSelected = true;
-    }
-
-    public void Deselect()
-    {
-        //GameManager.Instance.DeselectCard(this);
-        isSelected = false;
-    }
-
-    public virtual async UniTask UseCard(Player usr)
-    {
-
+        return false;
     }
     public virtual string GetDescription()
     {

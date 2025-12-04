@@ -29,10 +29,15 @@ public class AIPlayer : Player
     {
         return null;
     }
-    public virtual void OnMyTurn(int cmd)
+    public override async UniTask OnMyTurn(int cmd)
     {
         GameManager.Instance.curPlayer = this;
         CommandCount = cmd;
-        foreach (Piece x in onBoardList) x.OnTurnBegin();
+        foreach (Piece x in onBoardList)
+        {
+            x.OnTurnBegin();
+            x.pieceRenderer.UpdateData();
+        }
+
     }
 }
