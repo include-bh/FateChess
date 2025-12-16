@@ -115,7 +115,7 @@ public class BoardRenderer : CardRenderer, IPointerEnterHandler, IPointerClickHa
         {
             elapsed += Time.unscaledDeltaTime;
             float t = flyEase.Evaluate(elapsed / flyDuration);
-            float alpha = Mathf.Lerp(1f, 0.5f, t);
+            float alpha = Mathf.Lerp(1f, 0.1f, t);
             SetAlpha(alpha);
             await UniTask.Yield();
         }

@@ -20,7 +20,7 @@ public class AIPlayer : Player
         return PosSet[0];
     }
 
-    public override async UniTask<int> SelectDirection(int xpos, int ypos)
+    public override async UniTask<int> SelectDirection(int xpos, int ypos, bool rot=false)
     {
         return 0;
     }

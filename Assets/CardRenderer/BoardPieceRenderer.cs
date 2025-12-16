@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
@@ -10,8 +11,6 @@ public class BoardPieceRenderer : BoardRenderer, IPieceRenderer
 {
     public SpriteRenderer backgroundRenderer;
     public TextMeshPro HPText, ATText, DFText, RAText, STText;
-
-    public bool isSpan = false;
 
     public async UniTask UpdatePosition()
     {
@@ -36,7 +35,8 @@ public class BoardPieceRenderer : BoardRenderer, IPieceRenderer
             if (piece.AT != 0)
             {
                 ATText.text = piece.AT.ToString();
-                RAText.text = piece.RA.ToString();
+                if (piece.RA != 0) RAText.text = piece.RA.ToString();
+                else RAText.text = "";
             }
             else
             {
@@ -53,12 +53,14 @@ public class BoardPieceRenderer : BoardRenderer, IPieceRenderer
             if (piece.player != GameManager.Instance.curPlayer) return;
             if (piece is LoadAble ve)
             {
-                List<Piece> buf = new List<Piece> { ve };
-                foreach (ICanOnLoad load in ve.onLoad)
-                    if (load is Piece t && t.canAct) buf.Add(t);
+                List<Piece> buf = new List<Piece>();
+                if (ve.canAct || ve is Vehicle) buf.Add(ve);
+                foreach (Piece p in ve.onLoad.OfType<Piece>())
+                    if (p.canAct) buf.Add(p);
+                if (buf.Count == 0) return;
 
                 Piece tar = await GameManager.Instance.curPlayer.SelectTargetOnLoad(ve, buf);
-                if(tar!=null)
+                if (tar != null)
                     tar.TakeAction();
             }
             else
@@ -81,6 +83,17 @@ public class BoardPieceRenderer : BoardRenderer, IPieceRenderer
             InitRotation(piece.facing);
         }
         await InitAnimation();
+    }
+    public void InitSpriteSelector()
+    {
+        rend.sprite = data.sprite;
+        if (GameManager.Instance.playerAtlas != null)
+        {
+            string bgName = $"Player{data.player.id}";
+            backgroundRenderer.sprite = GameManager.Instance.playerAtlas.GetSprite(bgName);
+        }
+        transform.localScale = new Vector2(0.8f, 0.8f);
+        UpdateData();
     }
 
     public async UniTask TakeDamageAnimation()

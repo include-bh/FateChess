@@ -34,6 +34,9 @@ public class LoadAble : Piece
         (xpos, ypos) = await usr.SelectPosition(buf);
         facing = await usr.SelectDirection(xpos, ypos);
         status = CardStatus.OnBoard;
+        DealDamageModifier = usr.DealDamageModifier;
+        TakeDamageModifier = usr.TakeDamageModifier;
+        buffs = new List<Buff>(usr.buffs);
         usr.onBoardList.Add(this);
 
         GameObject go = GameObject.Instantiate(GameManager.Instance.BoardPiecePrefab);
@@ -50,26 +53,29 @@ public class LoadAble : Piece
     public override async UniTask Move()
     {
         await base.Move();
-        foreach(ICanOnLoad col in onLoad)if(col is Piece x)
+        foreach (Piece p in onLoad.OfType<Piece>())
         {
-            x.xpos = this.xpos;
-            x.ypos = this.ypos;
+            p.xpos = this.xpos;
+            p.ypos = this.ypos;
         }
     }
-    public override void OnDeath()
+    public override async UniTask OnDeath()
     {
-        base.OnDeath();
-        foreach(ICanOnLoad col in onLoad)if(col is Piece x)
+        if (tile != null) tile.onTile = null;
+        List<Piece> buf = onLoad.OfType<Piece>().ToList();
+        foreach (Piece p in buf)
         {
-            if (tile.onTile == null && (x.canSwim > 0 || tile.type != Terrain.Water))
+            if (tile.onTile == null && (p.canSwim > 0 || tile.type != Terrain.Water))
             {
-                x.xpos = this.xpos;
-                x.ypos = this.ypos;
-                x.UpdateOnBoardPosition();
+                p.xpos = this.xpos;
+                p.ypos = this.ypos;
+                p.UpdateOnBoardPosition();
             }
-            else x.ForceMove();
+            else p.ForceMove();
         }
         onLoad.Clear();
+        tile = null;
+        await base.OnDeath();
     }
     public override string GetDescription()
     {
@@ -77,7 +83,7 @@ public class LoadAble : Piece
         if (onLoad.Count > 0)
         {
             res += "\n内含：";
-            foreach(ICanOnLoad col in onLoad)if(col is Piece x)
+            foreach(Piece x in onLoad.OfType<Piece>())
             {
                 res += "\n" + x.cardName;
             }

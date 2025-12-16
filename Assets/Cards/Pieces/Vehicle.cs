@@ -18,7 +18,7 @@ public class Truck : Vehicle
         maxDF = DF = 2;
         RA = 0;
         ST = 3;
-        canClimb = 0; canSwim = 0; canBanMagic = 0; canRide = 0;
+        canClimb = 0; canSwim = 1; canBanMagic = 0; canRide = 0;
         capacity = 3;
         cardName = "战车";
         cardDescription = "载具，可以装载3个从者，快速冲往前线。\n载具不会阻止其上从者行动，但也不会防止其上从者受到攻击。";
@@ -32,13 +32,13 @@ public class Truck : Vehicle
         maxDF = DF = 2;
         RA = 0;
         ST = 3;
-        canClimb = 0; canSwim = 0; canBanMagic = 0; canRide = 0;
+        canClimb = 0; canSwim = 1; canBanMagic = 0; canRide = 0;
     }
 
     public override void getMove(int dep, int x, int y)
     {
         canGoTo.Add((x, y));
-        Queue<(int, int, int)> que=new Queue<(int, int, int)>();
+        Queue<(int, int, int)> que = new Queue<(int, int, int)>();
         que.Enqueue((dep, x, y));
         while (que.Count > 0)
         {
@@ -70,8 +70,8 @@ public class Truck : Vehicle
         bool ok = false;
         if (canAct)
         {
-            foreach (ICanOnLoad load in onLoad)
-                if (load is Piece t && t.canRide > 0) ok = true;
+            foreach (Piece p in onLoad.OfType<Piece>())
+                if (p.canRide > 0) ok = true;
         }
         if (ok == false)
         {
@@ -80,6 +80,12 @@ public class Truck : Vehicle
         }
         else canAct = false;
         await Move();
+    }
+    public override async UniTask Move()
+    {
+        await base.Move();
+        foreach (Piece p in onLoad.OfType<Piece>())
+            (p.xpos, p.ypos) = (xpos, ypos);
     }
 }
 
@@ -124,6 +130,9 @@ public class Glider : Vehicle
         (xpos, ypos) = await usr.SelectPosition(buf);
         facing = await usr.SelectDirection(xpos, ypos);
         status = CardStatus.OnBoard;
+        DealDamageModifier = usr.DealDamageModifier;
+        TakeDamageModifier = usr.TakeDamageModifier;
+        buffs = new List<Buff>(usr.buffs);
         usr.onBoardList.Add(this);
 
         GameObject go = GameObject.Instantiate(GameManager.Instance.BoardPiecePrefab);
@@ -142,8 +151,11 @@ public class Glider : Vehicle
         foreach (var x in GameManager.Instance.tiles.Keys)
             canGoTo.Add(x);
         var (nx, ny) = await player.SelectPosition(new List<(int, int)>(canGoTo));
+        xpos = nx;ypos = ny;
+        pieceRenderer?.UpdatePosition();
+
         tile.onTile = null;
-        foreach (Piece x in onLoad)
+        foreach (Piece x in onLoad.OfType<Piece>())
             (x.xpos, x.ypos) = (nx, ny);
 
         Piece e = GameManager.Instance.GetTile(nx, ny).onTile;
@@ -151,7 +163,7 @@ public class Glider : Vehicle
         {
             DealDamage(e, AT, true);
             if (e is LoadAble ve)
-                foreach (Piece x in ve.onLoad)
+                foreach (Piece x in ve.onLoad.OfType<Piece>())
                     DealDamage(x, AT, true);
         }
         OnDeath();
@@ -161,8 +173,8 @@ public class Glider : Vehicle
         bool ok = false;
         if (canAct)
         {
-            foreach (ICanOnLoad load in onLoad)
-                if (load is Piece t && t.canRide > 0) ok = true;
+            foreach (Piece p in onLoad.OfType<Piece>())
+                if (p.canRide > 0) ok = true;
         }
         if (ok == false)
         {

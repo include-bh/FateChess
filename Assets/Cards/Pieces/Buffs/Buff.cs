@@ -9,11 +9,27 @@ public class Buff
     public string buffName;
     public string buffDescription;
     public Buff() { }
+    public Buff(int i,int x, string s1, string s2)
+    {
+        id = i;
+        roundRemain = x;
+        buffName = s1;
+        buffDescription = s2;
+    }
+
+    public Buff(Buff b)
+    {
+        this.id = b.id;
+        this.roundRemain = b.roundRemain;
+        this.buffDescription = b.buffDescription;
+        this.buffName = b.buffName;
+    }
+
     public string GetDescription()
     {
-        string res="\n【" + buffName + "】";
+        string res = "\n【" + buffName + "】";
         if (roundRemain != -1) res += $"剩余{roundRemain}回合 ";
-        return res+buffDescription;
+        return res + "\n" + buffDescription;
     }
 }
 public class Stun : Buff
@@ -25,46 +41,4 @@ public class Stun : Buff
         buffName = "禁锢";
         buffDescription = "无法行动。";
     }
-}
-public class DealDamageModifier : Buff
-{
-    public int rate;
-    public DealDamageModifier(int x) : base()
-    {
-        id = 1002;
-        rate = x;
-        roundRemain = -1;
-        if (x >= 0)
-        {
-            buffName = "造成伤害提高";
-            buffDescription = $"造成伤害提高{x}。";
-        }
-        else
-        {
-            buffName = "造成伤害降低";
-            buffDescription = $"造成伤害降低{-x}。";
-        }
-    }
-    public DealDamageModifier() : this(0) { }
-}
-public class TakeDamageModifier : Buff
-{
-    public int rate;
-    public TakeDamageModifier(int x) : base()
-    {
-        id = 1003;
-        rate = x;
-        roundRemain = -1;
-        if (x >= 0)
-        {
-            buffName = "受到伤害提高";
-            buffDescription = $"受到伤害提高{x}。";
-        }
-        else
-        {
-            buffName = "受到伤害降低";
-            buffDescription = $"受到伤害降低{-x}。";
-        }
-    }
-    public TakeDamageModifier() : this(0) { }
 }

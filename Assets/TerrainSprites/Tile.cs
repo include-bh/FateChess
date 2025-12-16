@@ -20,6 +20,9 @@ public class Tile : MonoBehaviour, IPointerClickHandler
 
         UpdateSprite();
     }
+    public void UpdatePosition(){
+        transform.position = GameManager.GetPosition(xpos, ypos);
+    }
     public void UpdateSprite()
     {
         if (GameManager.Instance.terrainAtlas != null && terrainRend != null)
@@ -44,8 +47,6 @@ public class Tile : MonoBehaviour, IPointerClickHandler
         this.isCenter = c;
         this.onTile = null;
         this.isEditable = true;
-        
-        transform.position = GameManager.GetPosition(xpos, ypos);
     }
 }
 

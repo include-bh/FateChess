@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -68,6 +69,7 @@ public class GameManager : MonoBehaviour
 
     public Physics2DRaycaster raycaster;
 
+    public static event Action OnFlushCard;
     public void FlushCard()
     {
         int n = DiscardPile.Count;
@@ -82,6 +84,7 @@ public class GameManager : MonoBehaviour
             CardPile[n] = p;
         }
         DiscardPile.Clear();
+        OnFlushCard?.Invoke();
     }
     public Card DrawCard()
     {
@@ -92,12 +95,12 @@ public class GameManager : MonoBehaviour
                 Debug.Log("摸牌堆与弃牌堆同时为空，摸牌失败");
                 return null;
             }
-            //抛出“洗牌”事件
+            Debug.Log("洗牌");
             FlushCard();
         }
         Card tmp = CardPile[0];
         CardPile.RemoveAt(0);
-        tmp.status = CardStatus.InHand;
+        tmp.InitCard();
         return tmp;
     }
     public void DiscardCard(Card card)
@@ -124,6 +127,8 @@ public class GameManager : MonoBehaviour
         newTile.xpos = x; newTile.ypos = y; newTile.type = typ; newTile.isCenter = isCenter;
         newTile.onTile = null;
         tiles[key] = newTile;
+        newTile.transform.position = GetPosition(x, y);
+        newTile.UpdateSprite();
         newTileGO.SetActive(true);
         return newTile;
     }
@@ -135,37 +140,6 @@ public class GameManager : MonoBehaviour
         Tile t = tiles[key];
         Destroy(tiles[key].gameObject, 0.01f);
         tiles.Remove(key);
-        return true;
-    }
-
-    public bool MoveBlock(int x, int y, int xx, int yy, int facing)
-    {
-        for (int i = 0; i < 7; i++)
-            if (!tiles.ContainsKey((x + dx[i], y + dy[i]))) return false;
-        for (int i = 0; i < 7; i++)
-            if (tiles.ContainsKey((xx + dx[i], yy + dy[i]))) return false;
-        List<Tile> buf = new List<Tile>();
-        for (int i = 0; i < 6; i++)
-        {
-            var k1 = (x + dx[i], y + dy[i]);
-            var k2 = (xx + dx[(i + facing) % 6], yy + dy[(i + facing) % 6]);
-            Tile t = tiles[k1]; tiles.Remove(k1);
-            (t.xpos, t.ypos) = k2; tiles[k2] = t;
-        }
-        {
-            var k1 = (x, y);
-            var k2 = (xx, yy);
-            Tile t = tiles[k1]; tiles.Remove(k1);
-            (t.xpos, t.ypos) = k2; tiles[k2] = t;
-        }
-        return true;
-    }
-    public bool RemoveBlock(int x, int y)
-    {
-        for (int i = 0; i < 7; i++)
-            if (!tiles.ContainsKey((x + dx[i], y + dy[i]))) return false;
-        for (int i = 0; i < 7; i++)
-            RemoveTile(x + dx[i], y + dy[i]);
         return true;
     }
 
@@ -192,7 +166,7 @@ public class GameManager : MonoBehaviour
         UnityEngine.Random.InitState(seed);
 
         //初始化玩家
-        foreach (var cfg in StartManager.PendingData)
+        foreach (var cfg in DataLoader.PendingData)
         {
             if (cfg.type == PlayerType.Human)
                 players.Add(new Player(cfg.team));
@@ -220,6 +194,7 @@ public class GameManager : MonoBehaviour
             DiscardPile.Add(new Assassin());
             DiscardPile.Add(new Berserker());
         }
+
         for (int i = 0; i < 2; i++)
         {
             DiscardPile.Add(new Truck());
@@ -282,9 +257,11 @@ public class GameManager : MonoBehaviour
 
     public async UniTask StartGame()
     {
+        CardPile[0] = new Truck();
         for (int i = 0; i < players.Count; i++)
         {
             Master mas = new Master();
+            mas.InitCard();
             mas.player = players[i]; players[i].master = mas;
             players[i].onBoardList.Add(mas);
 
@@ -299,6 +276,7 @@ public class GameManager : MonoBehaviour
             mas.facing = await players[i].SelectDirection(mas.xpos, mas.ypos);
 
             mas.tile = GetTile(mas.xpos, mas.ypos); mas.tile.onTile = mas;
+            mas.status = CardStatus.OnBoard;
             GameObject go = Instantiate(BoardPiecePrefab);
             mas.renderer = go.GetComponent<BoardPieceRenderer>();
             mas.renderer.data = mas;
@@ -325,17 +303,22 @@ public class GameManager : MonoBehaviour
     public void EndGame(int win)
     {
         UIManager.Instance.SwitchToDeathUI();
-        UIManager.Instance.DeathText.text = "";
+        raycaster.eventMask = 0;
 
-        SceneManager.LoadScene("StartScene");
+        string buf = "获胜玩家：";
+        foreach (Player x in players)
+            if (x.team == win) buf += x.id.ToString() + "，";
+        buf += "按下方按钮返回开始菜单";
+
+        UIManager.Instance.DeathTitle.text = buf;
     }
 
     public async UniTask<bool> AskForWuXie(Skill skill, Player usr)
     {
         bool ok = true;
         int las = usr.id;
-        List<int> buf = new List<int>();
-        for (int i = (usr.id + 1) % players.Count; i != las; i++)
+        HashSet<int> buf = new HashSet<int>();
+        for (int i = (usr.id + 1) % players.Count; i != las; i = (i + 1) % players.Count)
             if (!players[i].dead && players[i].hasWuXie())
             {
                 if (await players[i].useWuXie(skill, usr, ok))
@@ -343,7 +326,6 @@ public class GameManager : MonoBehaviour
                     ok = !ok;
                     las = i;
                     buf.Add(i);
-                    break;
                 }
             }
         foreach (int x in buf) players[x].UpdateHandCard();
@@ -361,11 +343,11 @@ public class GameManager : MonoBehaviour
 
     public void SetLose(Player player)
     {
-        foreach (var x in player.onBoardList) x.OnDeath();
+        while (player.onBoardList.Count > 0) player.onBoardList[0].OnDeath();
         player.dead = true;
         if (UIManager.Instance.curPlayer == player)
         {
-            UIManager.Instance.DeathText.text = "";
+            UIManager.Instance.DeathTitle.text = "你已被击败，按下方按钮返回开始菜单";
             UIManager.Instance.SwitchToDeathUI();
         }
 
@@ -379,6 +361,14 @@ public class GameManager : MonoBehaviour
     
     public void Upgrade(Piece p1,Piece p2)
     {
-        
+        p2.renderer = p1.renderer;
+        p2.xpos = p1.xpos;
+        p2.ypos = p1.ypos;
+        p2.facing = p1.facing;
+        Player player = p1.player;
+
+        p1.OnDeath();
+
+        p2.UseCard(player);
     }
 }

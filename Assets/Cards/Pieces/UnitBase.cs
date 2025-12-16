@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
-public class UnitBase : LoadAble
+public class UnitBase : LoadAble, ICanBanMove
 {
     public override void getMove(int dep, int x, int y)
     {
@@ -30,11 +30,14 @@ public class UnitBase : LoadAble
             }
         }
     }
-    public virtual void TakeDamage(Piece e, int dmg, bool isPierce = false)
+    public override void TakeDamage(Piece e, int dmg, bool isPierce = false)
     {
+        if (e == null || GameManager.Instance.curPlayer == player) dmg /= 3;
+        if(TakeDamageModifier!=null)
+        foreach (DamageModifier modifier in TakeDamageModifier.GetInvocationList())
+            dmg = modifier(dmg, e, this);
         if (dmg <= 0) return;
 
-        if (e == null || GameManager.Instance.curPlayer == player) dmg /= 3;
 
         if (renderer is BoardPieceRenderer bprend) bprend.TakeDamageAnimation();
         if (!isPierce)
@@ -64,10 +67,6 @@ public class UnitBase : LoadAble
             OnDeath();
         }
     }
-    public void ForceMove(int dir = 6)
-    {
-        return;
-    }
     public override async UniTask TakeAction()
     {
         if (canAct)
@@ -76,13 +75,9 @@ public class UnitBase : LoadAble
             canAct = false;
         }
     }
-    public override string GetDescription()
-    {
-        return cardDescription;
-    }
 }
 
-public class Master : UnitBase, ICanBanMove
+public class Master : UnitBase, ICanBanKnock
 {
     public Master() : base()
     {
@@ -91,16 +86,16 @@ public class Master : UnitBase, ICanBanMove
         maxDF = DF = 1;
         RA = 2;
         ST = 0;
-        canClimb = 0; canSwim = 0; canBanMagic = 0; canRide = 0;
+        canClimb = 1; canSwim = 1; canBanMagic = 0; canRide = 0;
         capacity = 1;
         cardName = "Master";
-        cardDescription = "你可以在Master身旁召唤从者，Master也能够攻击，在关键时刻可以补一刀。但要小心，一旦Master被击杀，你会立即输掉游戏！保护好你的Master，并击杀其他玩家的Master以获得胜利。";
+        cardDescription = "你可以在Master所在处或身旁召唤从者，Master也能够攻击，在关键时刻可以补一刀。但要小心，一旦Master被击杀，你会立即输掉游戏！保护好你的Master，并击杀其他玩家的Master以获得胜利。";
         sprite = GameManager.Instance.pieceAtlas.GetSprite("Master");
     }
     
-    public virtual void OnDeath()
+    public override async UniTask OnDeath()
     {
-        base.OnDeath();
+        await base.OnDeath();
         if (GameManager.Instance.curPlayer == player)
             player.TurnEndTcs?.TrySetResult();
         GameManager.Instance.SetLose(player);
@@ -115,7 +110,7 @@ public class Golem : UnitBase
         maxDF = DF = 1;
         RA = 2;
         ST = 0;
-        canClimb = 0;canSwim = 0;canBanMagic = 0;canRide = 0;
+        canClimb = 1;canSwim = 1;canBanMagic = 0;canRide = 0;
         capacity = 1;
         cardName = "傀儡";
         cardDescription = "傀儡是Master的延伸，你可以像在Master身旁一样，在傀儡旁召唤从者。";
@@ -136,6 +131,9 @@ public class Golem : UnitBase
         (xpos, ypos) = await usr.SelectPosition(buf);
         facing = await usr.SelectDirection(xpos, ypos);
         status = CardStatus.OnBoard;
+        DealDamageModifier = usr.DealDamageModifier;
+        TakeDamageModifier = usr.TakeDamageModifier;
+        buffs = new List<Buff>(usr.buffs);
         usr.onBoardList.Add(this);
 
         GameObject go = GameObject.Instantiate(GameManager.Instance.BoardPiecePrefab);

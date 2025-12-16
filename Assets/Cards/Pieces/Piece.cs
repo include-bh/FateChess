@@ -17,16 +17,24 @@ public class Piece : Card
     {
         canAct = true;
         tile = null;
+        load = null;
         canGoTo = new HashSet<(int, int)>();
         canHit = new HashSet<Piece>();
+        buffs = new List<Buff>();
+        DealDamageModifier = null;
+        TakeDamageModifier = null;
     }
     public override void InitCard()
     {
         base.InitCard();
         canAct = true;
         tile = null;
+        load = null;
         canGoTo.Clear();
         canHit.Clear();
+        buffs.Clear();
+        DealDamageModifier = null;
+        TakeDamageModifier = null;
     }
     public int maxHP, HP, AT, maxDF, DF, RA, ST;
     public bool isPierce = false;
@@ -34,10 +42,12 @@ public class Piece : Card
     public int canClimb, canSwim, canBanMagic, canRide;
     public bool canAct;
 
-    [NonSerialized]public Tile tile;
+    [NonSerialized]
+    public Tile tile = null;
+    public LoadAble load = null;
 
-    public DamageModifier OutgoingDamageModifier;
-    public DamageModifier IncomingDamageModifier;
+    public DamageModifier DealDamageModifier;
+    public DamageModifier TakeDamageModifier;
     public List<Buff> buffs;
 
     public override CardRenderer renderer
@@ -50,7 +60,7 @@ public class Piece : Card
             else throw new ArgumentException();
         }
     }
-    public new IPieceRenderer pieceRenderer
+    public IPieceRenderer pieceRenderer
     {
         get => (IPieceRenderer)rend;
         set => rend = (CardRenderer)value;
@@ -58,10 +68,29 @@ public class Piece : Card
 
     public void UpdateOnBoardPosition()
     {
-        if (tile == null) return;
-        tile.onTile = null;
-        tile = GameManager.Instance.GetTile(xpos, ypos);
-        tile.onTile = this;
+        if (tile != null)
+        {
+            tile.onTile = null;
+            tile = null;
+        }
+        if (load != null && this is ICanOnLoad ic)
+        {
+            load.onLoad.Remove(ic);
+            load = null;
+        }
+        Tile t = GameManager.Instance.GetTile(xpos, ypos);
+        if (t.onTile == null)
+        {
+            tile = t;
+            tile.onTile = this;
+            renderer.gameObject.SetActive(true);
+        }
+        else if(t.onTile is LoadAble ve && this is ICanOnLoad icc)
+        {
+            load = ve;
+            ve.onLoad.Add(icc);
+            renderer.gameObject.SetActive(false);
+        }
     }
     /*
         public Transform HPpos, ATpos, DFpos, RApos, STpos;
@@ -98,7 +127,7 @@ public class Piece : Card
                     if (newTile.onTile != null)
                     {
                         if (newTile.onTile.player != this.player) continue;
-                        if (newTile.onTile is LoadAble ve && ve.onLoad.Count < ve.capacity) que.Enqueue((dep-1, nx, ny));
+                        if (this is ICanOnLoad && newTile.onTile is LoadAble ve && ve.onLoad.Count < ve.capacity) que.Enqueue((dep-1, nx, ny));
                         else
                         {
                             if (newTile.type == Terrain.Water && canSwim == 0) continue;
@@ -148,7 +177,7 @@ public class Piece : Card
                 {
                     canHit.Add(curTile.onTile);
                     if (curTile.onTile is LoadAble ve)
-                        foreach (Piece p in ve.onLoad) canHit.Add(p);
+                        foreach (Piece p in ve.onLoad.OfType<Piece>()) canHit.Add(p);
                 }
             }
             if (dep != 0)
@@ -156,8 +185,7 @@ public class Piece : Card
                 for (int i = 0; i < 6; i++)
                 {
                     int nx = x + dx[i], ny = y + dy[i];
-                    Tile newTile = GameManager.Instance.GetTile(nx, ny);
-                    que.Enqueue((dep-1, x, y));
+                    que.Enqueue((dep-1, nx, ny));
                 }
             }
         }
@@ -176,6 +204,10 @@ public class Piece : Card
         EventManager.TriggerOnAttack(this, e);
         GameObject go = GameObject.Instantiate(GameManager.Instance.AttackEffectPrefab);
 
+        if(DealDamageModifier!=null)
+        foreach (DamageModifier modifier in DealDamageModifier.GetInvocationList())
+            dmg = modifier(dmg, this, e);
+
         AttackEffect ef = go.GetComponent<AttackEffect>();
         ef.start = GameManager.GetPosition(xpos, ypos);
         ef.end = GameManager.GetPosition(e.xpos, e.ypos);
@@ -186,9 +218,12 @@ public class Piece : Card
 
     public virtual void TakeDamage(Piece e, int dmg, bool isPierce = false)
     {
+        if (e == null && GameManager.Instance.curPlayer == player) dmg /= 3;
+        if(TakeDamageModifier!=null)
+        foreach (DamageModifier modifier in TakeDamageModifier.GetInvocationList())
+            dmg = modifier(dmg, e, this);
         if (dmg <= 0) return;
 
-        if (e == null && GameManager.Instance.curPlayer == player) dmg /= 3;
 
         if (renderer is BoardPieceRenderer bprend) bprend.TakeDamageAnimation();
         if (!isPierce)
@@ -196,6 +231,7 @@ public class Piece : Card
             if (DF > dmg)
             {
                 DF -= dmg;
+                pieceRenderer.UpdateData();
                 return;
             }
             else
@@ -225,13 +261,14 @@ public class Piece : Card
         pieceRenderer.UpdateData();
     }
 
-    public virtual void OnDeath()
+    public virtual async UniTask OnDeath()
     {
         if (tile != null) tile.onTile = null;
+        if (load != null && this is ICanOnLoad ic) load.onLoad.Remove(ic);
         player.onBoardList.Remove(this);
         GameManager.Instance.DiscardCard(this);
         if (renderer is BoardRenderer brend)
-            brend.LeaveAnimation();
+            await brend.LeaveAnimation();
         GameObject.Destroy(renderer.gameObject);
         renderer = null;
     }
@@ -240,6 +277,15 @@ public class Piece : Card
     {
         DF = maxDF;
         canAct = true;
+        var toRemove = new List<Buff>();
+        foreach (Buff buff in buffs)
+        {
+            if (buff.roundRemain > 0)
+                if (--buff.roundRemain == 0) toRemove.Add(buff);
+            if (buff is Stun) canAct = false;
+        }
+        foreach (Buff buff in toRemove)
+            buffs.Remove(buff);
     }
     public virtual async UniTask TakeAction()
     {
@@ -253,13 +299,12 @@ public class Piece : Card
 
     public void ForceMove(int dir = 6)
     {
-        if (this is ICanBanMove) return;
         List<Tile> buf = new List<Tile>();
         for (int i = 0; i < 6; i++)
         {
             if (dir < 6 && (i == dir || i == dir + 3 || i == dir - 3)) continue;
             Tile t = GameManager.Instance.GetTile(xpos + dx[i], ypos + dy[i]);
-            if (t != null)
+            if (t != null && t.onTile == null)
             {
                 if (canSwim>0 || t.type != Terrain.Water)
                     buf.Add(t);
@@ -285,14 +330,25 @@ public class Piece : Card
     }
     public void Knockback(int dir)
     {
-        if (this is ICanBanMove) return;
+        int cx = xpos, cy = ypos;
         int nx = xpos + dx[dir], ny = ypos + dy[dir];
-        Tile t = GameManager.Instance.GetTile(nx, ny);
+
         (xpos, ypos) = (nx, ny);
         pieceRenderer?.UpdatePosition();
+
+        Tile t = GameManager.Instance.GetTile(nx, ny);
         if (t == null) OnDeath();
         else if (t.type == Terrain.Water && canSwim == 0) OnDeath();
-        else UpdateOnBoardPosition();
+        else if (t.onTile != null)
+        {
+            (xpos, ypos) = (cx, cy);
+            pieceRenderer?.UpdatePosition();
+            this.TakeDamage(null, 1, true);
+            t.onTile.TakeDamage(null, 1, true);
+        }
+        else {
+            UpdateOnBoardPosition();
+        }
     }
 
     public override async UniTask<bool> UseCard(Player usr)
@@ -311,7 +367,7 @@ public class Piece : Card
                         if (canSwim > 0 || t.type != Terrain.Water)
                             buf.Add((t.xpos, t.ypos));
                     }
-                    else if (t.onTile is LoadAble ve && this is ICanOnLoad)
+                    else if (this is ICanOnLoad && t.onTile is LoadAble ve)
                     {
                         if (ve.player == usr && ve.onLoad.Count < ve.capacity)
                             buf.Add((t.xpos, t.ypos));
@@ -323,6 +379,9 @@ public class Piece : Card
         (xpos, ypos) = await usr.SelectPosition(buf.ToList());
         facing = await usr.SelectDirection(xpos, ypos);
         status = CardStatus.OnBoard;
+        DealDamageModifier = usr.DealDamageModifier;
+        TakeDamageModifier = usr.TakeDamageModifier;
+        buffs = new List<Buff>(usr.buffs);
         usr.onBoardList.Add(this);
 
         GameObject go = GameObject.Instantiate(GameManager.Instance.BoardPiecePrefab);
@@ -330,11 +389,7 @@ public class Piece : Card
         renderer.data = this;
         renderer.InitSprite();
 
-        Tile targetTile = GameManager.Instance.GetTile(xpos, ypos);
-        if (targetTile.onTile == null)
-            { tile = targetTile; tile.onTile = this; }
-        else if (targetTile.onTile is LoadAble ve && this is ICanOnLoad load)
-            { ve.onLoad.Add(load); renderer.gameObject.SetActive(false); }
+        UpdateOnBoardPosition();
 
         return true;
     }
@@ -345,7 +400,12 @@ public class Piece : Card
         if (canClimb>0) res += "\n【攀爬】可以通过山地。";
         if (canSwim>0) res += "\n【涉水】可以进入水域。";
         if (canBanMagic>0) res += "\n【对魔力】可以停止Caster的连锁攻击。";
-        if (canRide>0) res += "\n【驾驶】载具上拥有含有此属性的从者时，可以不消耗令咒行动一次。";
+        if (canRide > 0) res += "\n【驾驶】载具上拥有含有此属性的从者时，可以不消耗令咒行动一次。";
+        if (buffs.Count > 0)
+        {
+            res += "\n效果列表";
+            foreach (Buff x in buffs) res += x.GetDescription();
+        }
         return res;
     }
 }
@@ -356,6 +416,6 @@ public interface ICanOnLoad
 public interface ICanBanMove
 {
 }
-public interface ICanBanWind
+public interface ICanBanKnock
 {
 }

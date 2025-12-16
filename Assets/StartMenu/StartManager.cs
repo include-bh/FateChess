@@ -16,10 +16,7 @@ public class StartManager : MonoBehaviour
         if (Instance != null && Instance != this)
             Destroy(gameObject);
         else
-        {
             Instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
     }
     private void OnDestroy()
     {
@@ -30,6 +27,11 @@ public class StartManager : MonoBehaviour
     }
 
     void Start()
+    {
+        init();
+    }
+
+    public void init()
     {
         UpdateTeamDropdown();
         presetDropdown.ClearOptions();
@@ -157,7 +159,7 @@ public class StartManager : MonoBehaviour
             players[i].id = i;
             players[i].text.text = $"玩家{i+1}";
             RectTransform rect = players[i].gameObject.GetComponent<RectTransform>();
-            rect.anchoredPosition = new Vector2(0, 260 - i * 150);
+            rect.anchoredPosition = new Vector2(0, 100 - i * 100);
         }
     }
 
@@ -167,11 +169,9 @@ public class StartManager : MonoBehaviour
         if (TeamOptions.Count < 3) return;
 
         //场景切换
-        PendingData = players.Select(x => x.data).ToList();
+        DataLoader.PendingData = players.Select(x => x.data).ToList();
         SceneManager.LoadScene("GameScene");
     }
-
-    public static List<PlayerConfigData> PendingData;
 }
 
 [System.Serializable]

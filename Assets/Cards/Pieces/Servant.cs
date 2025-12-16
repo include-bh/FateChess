@@ -17,14 +17,14 @@ public class Servant : Piece,ICanOnLoad
         base.InitCard();
         equip = null;
     }
-    public override void OnDeath()
+    public override async UniTask OnDeath()
     {
         if (equip != null)
         {
             equip.OnRemove();
             equip = null;
         }
-        base.OnDeath();
+        await base.OnDeath();
     }
     public override string GetDescription()
     {
@@ -208,8 +208,12 @@ public class Assassin : Servant
     {
         EventManager.TriggerOnAttack(this, e);
 
-        if (((e.xpos - xpos == dx[e.facing]) && (e.ypos - ypos == dy[e.facing]))
-         || ((e.xpos - xpos == dx[(e.facing + 1) % 6]) && (e.ypos - ypos == dy[(e.facing + 1) % 6])))
+        if(DealDamageModifier!=null)
+        foreach (DamageModifier modifier in DealDamageModifier.GetInvocationList())
+            dmg = modifier(dmg, this, e);
+
+        if (e.load == null && (((e.xpos - xpos == dx[e.facing]) && (e.ypos - ypos == dy[e.facing]))
+         || ((e.xpos - xpos == dx[(e.facing + 1) % 6]) && (e.ypos - ypos == dy[(e.facing + 1) % 6]))))
             e.TakeDamage(this, dmg + 2, isPierce);
         else e.TakeDamage(this, dmg, isPierce);
     }
@@ -239,11 +243,14 @@ public class Berserker : Servant
         canClimb = 0; canSwim = 0; canBanMagic = 0; canRide = 0;
     }
 
-    public virtual void TakeDamage(Piece e, int dmg, bool isPierce = false)
+    public override void TakeDamage(Piece e, int dmg, bool isPierce = false)
     {
+        if (e == null && GameManager.Instance.curPlayer == player) dmg /= 3;
+        if(TakeDamageModifier!=null)
+        foreach (DamageModifier modifier in TakeDamageModifier.GetInvocationList())
+            dmg = modifier(dmg, e, this);
         if (dmg <= 0) return;
 
-        if (e == null && GameManager.Instance.curPlayer == player) dmg /= 3;
 
         if (renderer is BoardPieceRenderer bprend) bprend.TakeDamageAnimation();
         if (!isPierce)
@@ -263,30 +270,29 @@ public class Berserker : Servant
         if (HP > dmg)
         {
             HP -= dmg;
-            if (renderer != null) pieceRenderer.UpdateData();
+            pieceRenderer.UpdateData();
         }
         else
         {
             if (equip is GodHand equ && equ.state == 0)
             {
                 HP = 1;
-                equ.state = 1;
-                IncomingDamageModifier += equ.modifier;
+                equ.Trigger();
+                pieceRenderer.UpdateData();
             }
             else
             {
                 HP = 0;
                 EventManager.TriggerOnKill(e, this);
-                if (renderer != null) pieceRenderer.UpdateData();
+                pieceRenderer.UpdateData();
                 OnDeath();
             }
         }
     }
     
-    public virtual void OnTurnBegin()
+    public override void OnTurnBegin()
     {
-        DF = maxDF;
-        canAct = true;
+        base.OnTurnBegin();
         if (equip is GodHand equ && equ.state == 1)
         {
             equip.OnRemove();

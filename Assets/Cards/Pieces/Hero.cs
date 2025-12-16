@@ -1,15 +1,36 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
-public class Hero : Piece, ICanOnLoad
+public class Hero : Piece, ICanOnLoad, ICanBanMove
 {
-    public virtual void OnDeath()
+    public override async UniTask<bool> UseCard(Player usr)
     {
-        if(tile!=null)tile.onTile = null;
+        player = usr;
+        status = CardStatus.OnBoard;
+        DealDamageModifier = usr.DealDamageModifier;
+        TakeDamageModifier = usr.TakeDamageModifier;
+        buffs = new List<Buff>(usr.buffs);
+        usr.onBoardList.Add(this);
+        
+        GameObject go = GameObject.Instantiate(GameManager.Instance.BoardPiecePrefab);
+        renderer = go.GetComponent<BoardPieceRenderer>();
+        renderer.data = this;
+        renderer.InitSprite();
+
+        UpdateOnBoardPosition();
+
+        return true;
+    }
+    public override async UniTask OnDeath()
+    {
+        if (tile != null) tile.onTile = null;
+        if (load != null && this is ICanOnLoad ic) load.onLoad.Remove(ic);
         player.onBoardList.Remove(this);
         if (renderer != null && renderer is BoardRenderer brend)
-            brend.LeaveAnimation();
+            await brend.LeaveAnimation();
         if (renderer != null)
         {
             GameObject.Destroy(renderer.gameObject);
@@ -28,7 +49,7 @@ public class Arthuria : Hero
         ST = 1;
         canClimb = 0; canSwim = 0; canBanMagic = 1; canRide = 1;
         cardName = "阿尔托莉雅·潘德拉贡";
-        cardDescription = "古不列颠传说中的亚瑟王，在圣杯战争中曾多次毁掉圣杯。";
+        cardDescription = "古不列颠传说中的亚瑟王，在圣杯战争中曾多次毁掉圣杯。\n在场时，己方单位受到伤害-1。";
         sprite = GameManager.Instance.pieceAtlas.GetSprite("Arthuria");
     }
     public override void InitCard()
@@ -40,6 +61,36 @@ public class Arthuria : Hero
         RA = 1;
         ST = 1;
         canClimb = 0; canSwim = 0; canBanMagic = 1; canRide = 1;
+    }
+    
+    Buff buff = new Buff(3001,-1, "阿尔托莉雅·潘德拉贡", "受到伤害-1。");
+    public int modifier(int dmg, Piece atk, Piece def)
+    {
+        if (def.player == this.player) --dmg;
+        return dmg;
+    }
+    public override async UniTask<bool> UseCard(Player usr)
+    {
+        await base.UseCard(usr);
+        player.TakeDamageModifier += modifier;
+        player.buffs.Add(new Buff(buff));
+        foreach (Piece x in player.onBoardList)
+        {
+            x.TakeDamageModifier += modifier;
+            x.buffs.Add(new Buff(buff));
+        }
+        return true;
+    }
+    public override async UniTask OnDeath()
+    {
+        player.TakeDamageModifier -= modifier;
+        player.buffs.RemoveAll(buf => buf.id == buff.id);
+        foreach (Piece x in player.onBoardList)
+        {
+            x.TakeDamageModifier -= modifier;
+            x.buffs.RemoveAll(buf => buf.id == buff.id);
+        }
+        await base.OnDeath();
     }
 }
 public class Include : Hero
@@ -71,7 +122,6 @@ public class Sunsettia : Hero
 {
     public Sunsettia():base()
     {
-        base.InitCard();
         maxHP = HP = 10;
         AT = 5;
         maxDF = DF = 3;
@@ -84,6 +134,7 @@ public class Sunsettia : Hero
     }
     public override void InitCard()
     {
+        base.InitCard();
         maxHP = HP = 10;
         AT = 5;
         maxDF = DF = 3;

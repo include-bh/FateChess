@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.U2D;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using TMPro;
 
 public class UIManager : MonoBehaviour//, IPointerEnterHandler, IPointerExitHandler
@@ -28,7 +29,15 @@ public class UIManager : MonoBehaviour//, IPointerEnterHandler, IPointerExitHand
     [Header("常态UI")]
     public GameObject NormalUI;
     public Button RefreshCardButton;
+    public void OnRefreshCardClicked()
+    {
+        curPlayer.RefreshCard();
+    }
     public Button EndTurnButton;
+    public void OnEndTurnClicked()
+    {
+        curPlayer.TurnEndTcs?.TrySetResult();
+    }
     public SpriteAtlas commandAtlas;
     public Image CommandCount;
     public TextMeshProUGUI cardNameText;
@@ -39,15 +48,40 @@ public class UIManager : MonoBehaviour//, IPointerEnterHandler, IPointerExitHand
     [Header("选择中UI")]
     public GameObject SelectUI;
     public Button FinishButton;
+    public event Action FinishSelect;
+    public void OnFinishClicked()
+    {
+        FinishSelect?.Invoke();
+    }
+    public void ClearFinish()
+    {
+        FinishSelect = null;
+    }
 
     [Header("无懈可击UI")]
     public GameObject WuXieUI;
     public Button UseWuXieButton;
+    public event Action UseWuXiePress;
+    public void OnUseClicked()
+    {
+        UseWuXiePress?.Invoke();
+    }
     public Button NotUseWuXieButton;
+    public event Action NotUseWuXiePress;
+    public void OnNotUseClicked()
+    {
+        NotUseWuXiePress?.Invoke();
+    }
+    public TextMeshProUGUI WuXieTitle;
 
     [Header("死亡UI")]
     public GameObject DeathUI;
-    public TextMeshProUGUI DeathText;
+    public TextMeshProUGUI DeathTitle;
+    public Button ReturnButton;
+    public void DeathReturn()
+    {
+        SceneManager.LoadScene("StartScene");
+    }
 
     [Header("预制体")]
     public GameObject UICardPrefab;
@@ -66,20 +100,6 @@ public class UIManager : MonoBehaviour//, IPointerEnterHandler, IPointerExitHand
         }
     }
 
-    public void OnEndTurnClicked()
-    {
-        curPlayer.TurnEndTcs?.TrySetResult();
-    }
-    public void OnRefreshCardClicked()
-    {
-        curPlayer.RefreshCard();
-    }
-    public event Action FinishSelect;
-    public void OnFinishClicked()
-    {
-        FinishSelect?.Invoke();
-        FinishSelect = null;
-    }
     
     public void SwitchToSelectUI()
     {
@@ -119,6 +139,12 @@ public class UIManager : MonoBehaviour//, IPointerEnterHandler, IPointerExitHand
             UpdateUIRendererImmediately(i, curPlayer.hand[i]);
     }
 
+    public void SetCurPlayer(Player cur)
+    {
+        curPlayer = cur;
+        UpdateCommandCount();
+        UpdateHandCard();
+    }
     public void SetupUIRenderer(int id, Card card)
     {
         Destroy(CardSlot[id].gameObject);
@@ -148,19 +174,23 @@ public class UIManager : MonoBehaviour//, IPointerEnterHandler, IPointerExitHand
         SetupUIRenderer(id, card);
         CardSlot[id].gameObject.SetActive(true);
     }
-    
+
     public void UpdateDescription()
     {
         if (curOnCard == null)
         {
-            cardNameText.text = "";
-            cardDescriptionText.text = "";
+            cardNameText.text = " ";
+            cardDescriptionText.text = " ";
         }
         else
         {
             cardNameText.text = curOnCard.cardName;
-            cardDescriptionText.text = curOnCard.GetDescription();
+            cardDescriptionText.text = curOnCard.GetDescription() + "\n ";
         }
+
+        cardDescriptionText.ForceMeshUpdate();
+        Canvas.ForceUpdateCanvases();
         scrollRect.verticalNormalizedPosition = 1f;
     }
+    
 }

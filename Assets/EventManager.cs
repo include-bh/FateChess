@@ -11,15 +11,4 @@ public class EventManager : MonoBehaviour
     public static void TriggerOnBreak(Piece a,Piece b){OnBreak?.Invoke(a,b);}
     public static event Action<Piece, Piece> OnAttack;
     public static void TriggerOnAttack(Piece a,Piece b){OnAttack?.Invoke(a,b);}
-
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 }

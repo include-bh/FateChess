@@ -56,7 +56,6 @@ public class ExCalibur : Weapon
         cardDescription = "*仅Saber装备时生效\n攻击力+2。";
         sprite = GameManager.Instance.weaponAtlas.GetSprite("ExCalibur");
     }
-
     public override async UniTask<bool> UseCard(Player usr)
     {
         if (usr.CommandCount <= 0) return false;
@@ -94,12 +93,18 @@ public class ExCalibur : Weapon
     {
         base.OnInstall();
         if (owner is Saber)
+        {
             owner.AT += 2;
+            owner.pieceRenderer.UpdateData();
+        }
     }
     public override void OnRemove()
     {
         if (owner is Saber)
+        {
             owner.AT -= 2;
+            owner.pieceRenderer.UpdateData();
+        }
         base.OnRemove();
     }
 }
@@ -117,6 +122,7 @@ public class Avalon : Weapon
         if (def.player == owner.player) --dmg;
         return dmg;
     }
+    Buff buff = new Buff(2001, -1, "遥远的理想乡", "受到伤害-1。");
 
     public override async UniTask<bool> UseCard(Player usr)
     {
@@ -156,18 +162,26 @@ public class Avalon : Weapon
         base.OnInstall();
         if (owner is Saber)
         {
-            owner.player.IncomingDamageModifier += modifier;
+            owner.player.TakeDamageModifier += modifier;
+            owner.player.buffs.Add(new Buff(buff));
             foreach (Piece x in owner.player.onBoardList)
-                x.IncomingDamageModifier += modifier;
+            {
+                x.TakeDamageModifier += modifier;
+                x.buffs.Add(new Buff(buff));
+            }
         }
     }
     public override void OnRemove()
     {
         if (owner is Saber)
         {
-            owner.player.IncomingDamageModifier -= modifier;
+            owner.player.TakeDamageModifier -= modifier;
+            owner.player.buffs.RemoveAll(buf => buf.id == buff.id);
             foreach (Piece x in owner.player.onBoardList)
-                x.IncomingDamageModifier -= modifier;
+            {
+                x.TakeDamageModifier -= modifier;
+                x.buffs.RemoveAll(buf => buf.id == buff.id);
+            }
         }
         base.OnRemove();
     }
@@ -181,6 +195,7 @@ public class UBW : Weapon
         cardDescription = "*仅Archer装备时生效\n己方单位造成伤害+1。";
         sprite = GameManager.Instance.weaponAtlas.GetSprite("UBW");
     }
+    Buff buff = new Buff(2002,-1, "无限剑制", "造成伤害+1。");
     public int modifier(int dmg, Piece atk, Piece def)
     {
         if (atk.player == owner.player) ++dmg;
@@ -191,18 +206,26 @@ public class UBW : Weapon
         base.OnInstall();
         if (owner is Archer)
         {
-            owner.player.OutgoingDamageModifier += modifier;
+            owner.player.DealDamageModifier += modifier;
+            owner.player.buffs.Add(new Buff(buff));
             foreach (Piece x in owner.player.onBoardList)
-                x.OutgoingDamageModifier += modifier;
+            {
+                x.DealDamageModifier += modifier;
+                x.buffs.Add(new Buff(buff));
+            }
         }
     }
     public override void OnRemove()
     {
         if (owner is Archer)
         {
-            owner.player.OutgoingDamageModifier -= modifier;
+            owner.player.DealDamageModifier -= modifier;
+            owner.player.buffs.RemoveAll(buf => buf.id == buff.id);
             foreach (Piece x in owner.player.onBoardList)
-                x.OutgoingDamageModifier -= modifier;
+            {
+                x.DealDamageModifier -= modifier;
+                x.buffs.RemoveAll(buf => buf.id == buff.id);
+            }
         }
         base.OnRemove();
     }
@@ -216,6 +239,7 @@ public class GaeBolg : Weapon
         cardDescription = "*仅Lancer装备时生效\n攻击范围+1，攻击非相邻目标时造成伤害+1。";
         sprite = GameManager.Instance.weaponAtlas.GetSprite("GaeBolg");
     }
+    Buff buff = new Buff(2003,-1, "穿刺死棘之枪", "攻击非相邻目标时造成伤害+1。");
     public int modifier(int dmg, Piece atk, Piece def)
     {
         for (int i = 0; i < 6; i++)
@@ -229,8 +253,10 @@ public class GaeBolg : Weapon
         base.OnInstall();
         if(owner is Lancer)
         {
-            owner.OutgoingDamageModifier += modifier;
+            owner.DealDamageModifier += modifier;
             owner.RA += 1;
+            owner.buffs.Add(new Buff(buff));
+            owner.pieceRenderer.UpdateData();
         }
     }
     
@@ -238,8 +264,10 @@ public class GaeBolg : Weapon
     {
         if(owner is Lancer)
         {
-            owner.OutgoingDamageModifier -= modifier;
+            owner.DealDamageModifier -= modifier;
             owner.RA -= 1;
+            owner.buffs.RemoveAll(buf => buf.id == buff.id);
+            owner.pieceRenderer.UpdateData();
         }
         base.OnRemove();
     }
@@ -250,9 +278,10 @@ public class BloodFort : Weapon
     public BloodFort() : base()
     {
         cardName = "鲜血神殿";
-        cardDescription = "*仅Rider装备时生效\n己方单位击败敌人时，回复3生命。";
+        cardDescription = "*仅Rider装备时生效\n己方单位击败敌人时，回复3点生命。";
         sprite = GameManager.Instance.weaponAtlas.GetSprite("BloodFort");
     }
+    Buff buff = new Buff(2004,-1, "鲜血神殿", "击败敌人时回复3点生命。");
     public void modifier(Piece atk,Piece def)
     {
         if (atk.player == owner.player)
@@ -261,13 +290,23 @@ public class BloodFort : Weapon
     public override void OnInstall()
     {
         base.OnInstall();
-        if(owner is Rider)
+        if (owner is Rider)
+        {
             EventManager.OnKill += modifier;
+            owner.player.buffs.Add(new Buff(buff));
+            foreach (Piece x in owner.player.onBoardList)
+                x.buffs.Add(new Buff(buff));
+        }
     }
     public override void OnRemove()
     {
         if(owner is Rider)
+        {
             EventManager.OnKill -= modifier;
+            owner.player.buffs.RemoveAll(buf => buf.id == buff.id);
+            foreach (Piece x in owner.player.onBoardList)
+                x.buffs.RemoveAll(buf => buf.id == buff.id);
+        }
         base.OnRemove();
     }
 }
@@ -300,6 +339,7 @@ public class GodHand : Weapon
     }
 
     public int state = 0;
+    Buff buff = new Buff(2005,1, "十二试炼", "不会受到伤害。");
     
     public int modifier(int dmg, Piece atk, Piece def)
     {
@@ -310,10 +350,22 @@ public class GodHand : Weapon
         base.OnInstall();
         state = 0;
     }
-    
+    public void Trigger()
+    {
+        if(owner is Berserker)
+        {
+            state = 1;
+            owner.TakeDamageModifier += modifier;
+            owner.buffs.Add(new Buff(buff));
+        }
+    }
     public override void OnRemove()
     {
-        if (state == 1) owner.IncomingDamageModifier -= modifier;
+        if(owner is Berserker)
+        {
+            owner.buffs.RemoveAll(buf => buf.id == buff.id);
+            if (state == 1) owner.TakeDamageModifier -= modifier;
+        }
         base.OnRemove();
     }
 }
@@ -326,6 +378,7 @@ public class Zabaniya : Weapon
         sprite = GameManager.Instance.weaponAtlas.GetSprite("Zabaniya");
     }
 
+    Buff buff = new Buff(1002,-1, "嗜血", "击败敌人后可再次行动，不可连续触发。");
     int state = 0;
     public void modifier(Piece atk, Piece def)
     {
@@ -348,6 +401,8 @@ public class Zabaniya : Weapon
             EventManager.OnKill += modifier;
             owner.ST += 1;
             owner.AT += 1;
+            owner.buffs.Add(new Buff(buff));
+            owner.pieceRenderer.UpdateData();
         }
     }
     
@@ -358,6 +413,8 @@ public class Zabaniya : Weapon
             EventManager.OnKill -= modifier;
             owner.ST -= 1;
             owner.AT -= 1;
+            owner.buffs.RemoveAll(buf => buf.id == buff.id);
+            owner.pieceRenderer.UpdateData();
         }
         base.OnRemove();
     }
@@ -370,6 +427,7 @@ public class TrailBat : Weapon
         cardDescription = "攻击力+1。击破敌人时，回复2生命。";
         sprite = GameManager.Instance.weaponAtlas.GetSprite("TrailBat");
     }
+    Buff buff = new Buff(2006,-1, "开拓者的球棒", "击破敌人时，回复2生命。");
     public void modifier(Piece atk,Piece def)
     {
         if (atk == owner)
@@ -381,13 +439,17 @@ public class TrailBat : Weapon
     {
         base.OnInstall();
         EventManager.OnBreak += modifier;
+        owner.buffs.Add(new Buff(buff));
         owner.AT += 1;
+        owner.pieceRenderer.UpdateData();
     }
     
     public override void OnRemove()
     {
         EventManager.OnBreak -= modifier;
+        owner.buffs.RemoveAll(buf => buf.id == buff.id);
         owner.AT -= 1;
+        owner.pieceRenderer.UpdateData();
         base.OnRemove();
     }
 }
@@ -400,6 +462,7 @@ public class PyroLance : Weapon
         sprite = GameManager.Instance.weaponAtlas.GetSprite("PyroLance");
     }
 
+    Buff buff = new Buff(2007,-1, "筑城者的骑枪", "攻击时，回复1生命。");
     
     public int modifier(int dmg,Piece atk,Piece def)
     {
@@ -412,14 +475,18 @@ public class PyroLance : Weapon
         base.OnInstall();
         owner.maxDF += 1;
         owner.DF += 1;
-        owner.OutgoingDamageModifier += modifier;
+        owner.buffs.Add(new Buff(buff));
+        owner.pieceRenderer.UpdateData();
+        owner.DealDamageModifier += modifier;
     }
     
     public override void OnRemove()
     {
         owner.maxDF -= 1;
         owner.DF = Math.Min(owner.DF, owner.maxDF);
-        owner.OutgoingDamageModifier -= modifier;
+        owner.buffs.RemoveAll(buf => buf.id == buff.id);
+        owner.pieceRenderer.UpdateData();
+        owner.DealDamageModifier -= modifier;
         base.OnRemove();
     }
 }
@@ -457,7 +524,7 @@ public class MemePen : Weapon
         cardDescription = "造成的伤害为穿透伤害。";
         sprite = GameManager.Instance.weaponAtlas.GetSprite("MemePen");
     }
-    
+
     public override void OnInstall()
     {
         base.OnInstall();
@@ -478,6 +545,7 @@ public class CludeSpear : Weapon
         cardDescription = "攻击力+1。获得【嗜血】：击败敌人后可再次行动，不可连续触发。";
         sprite = GameManager.Instance.weaponAtlas.GetSprite("CludeSpear");
     }
+    Buff buff = new Buff(2008,-1, "嗜血", "击败敌人后可再次行动，不可连续触发。");
     public override async UniTask<bool> UseCard(Player usr)
     {
         if (usr.CommandCount <= 0) return false;
@@ -511,8 +579,6 @@ public class CludeSpear : Weapon
         return true;
     }
     
-    
-
     int state = 0;
     public void modifier(Piece atk, Piece def)
     {
@@ -530,12 +596,16 @@ public class CludeSpear : Weapon
         base.OnInstall();
         state = 0;
         EventManager.OnKill += modifier;
+        owner.buffs.Add(new Buff(buff));
         owner.AT += 1;
+        owner.pieceRenderer.UpdateData();
     }
     public override void OnRemove()
     {
         EventManager.OnKill -= modifier;
         owner.AT -= 1;
+        owner.buffs.RemoveAll(buf => buf.id == buff.id);
+        owner.pieceRenderer.UpdateData();
         base.OnInstall();
     }
 }
@@ -586,6 +656,7 @@ public class SunsetBow : Weapon
         ++owner.canClimb;
         ++owner.canSwim;
         owner.RA += 1;
+        owner.pieceRenderer.UpdateData();
     }
     
     public override void OnRemove()
@@ -593,6 +664,7 @@ public class SunsetBow : Weapon
         --owner.canClimb;
         --owner.canSwim;
         owner.RA -= 1;
+        owner.pieceRenderer.UpdateData();
         base.OnRemove();
     }
 }
