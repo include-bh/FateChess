@@ -115,7 +115,32 @@ public class Include : Hero
         maxDF = DF = 3;
         RA = 2;
         ST = 2;
-        canClimb = 1;canSwim = 1;canBanMagic = 1;canRide = 0;
+        canClimb = 1; canSwim = 1; canBanMagic = 1; canRide = 0;
+    }
+    Buff buff = new Buff(2008,-1, "嗜血", "击败敌人后可再次行动，不可连续触发。");
+    int state = 0;
+    public void modifier(Piece atk, Piece def)
+    {
+        if (atk == this && state == 0)
+        {
+            state = 1;
+            canAct = true;
+            TakeAction();
+            state = 0;
+        }
+    }
+    
+    public override async UniTask<bool> UseCard(Player usr)
+    {
+        await base.UseCard(usr);
+        EventManager.OnKill += modifier;
+        buffs.Add(new Buff(buff));
+        return true;
+    }
+    public override async UniTask OnDeath()
+    {
+        EventManager.OnKill -= modifier;
+        await base.OnDeath();
     }
 }
 public class Sunsettia : Hero
@@ -141,5 +166,29 @@ public class Sunsettia : Hero
         RA = 4;
         ST = 2;
         canClimb = 1;canSwim = 1;canBanMagic = 1;canRide = 0;
+    }
+    Buff buff = new Buff(2008,-1, "嗜血", "击败敌人后可再次行动，不可连续触发。");
+    int state = 0;
+    public void modifier(Piece atk, Piece def)
+    {
+        if (atk == this && state == 0)
+        {
+            state = 1;
+            canAct = true;
+            TakeAction();
+            state = 0;
+        }
+    }
+    public override async UniTask<bool> UseCard(Player usr)
+    {
+        await base.UseCard(usr);
+        EventManager.OnKill += modifier;
+        buffs.Add(new Buff(buff));
+        return true;
+    }
+    public override async UniTask OnDeath()
+    {
+        EventManager.OnKill -= modifier;
+        await base.OnDeath();
     }
 }

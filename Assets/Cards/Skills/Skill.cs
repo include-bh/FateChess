@@ -8,13 +8,18 @@ using static GameManager;
 
 public class Skill : Card
 {
+    public List<GameObject> ShowTargetList = new List<GameObject>();
     public virtual void ShowTarget()
     {
         
     }
     public virtual void RemoveShowTarget()
     {
-        
+        while (ShowTargetList.Count > 0)
+        {
+            GameObject.Destroy(ShowTargetList[0]);
+            ShowTargetList.RemoveAt(0);
+        }
     }
 }
 
@@ -28,6 +33,18 @@ public class TuXi : Skill
         cardName = "奇兵突袭";
         cardDescription = "使任意己方非Master、傀儡单位移动至任意空格，并可再次行动。";
         sprite = GameManager.Instance.skillAtlas.GetSprite("TuXi");
+    }
+    public override void ShowTarget()
+    {
+        Vector2 pos = GameManager.GetPosition(tar.xpos, tar.ypos);
+        GameObject go = GameObject.Instantiate(GameManager.Instance.SelectPositionTagPrefab, pos, Quaternion.identity);
+        go.SetActive(true);
+        ShowTargetList.Add(go);
+
+        pos = GameManager.GetPosition(tarx, tary);
+        go = GameObject.Instantiate(GameManager.Instance.SelectDirectionTagPrefab, pos, Quaternion.Euler(0, 0, 60f * tarf));
+        go.SetActive(true);
+        ShowTargetList.Add(go);
     }
 
     public override async UniTask<bool> UseCard(Player usr)
@@ -80,6 +97,18 @@ public class ZhuanYi : Skill
         cardDescription = "使任意己方Master或傀儡移动至多3格，并可再次行动。";
         sprite = GameManager.Instance.skillAtlas.GetSprite("ZhuanYi");
     }
+    public override void ShowTarget()
+    {
+        Vector2 pos = GameManager.GetPosition(tar.xpos, tar.ypos);
+        GameObject go = GameObject.Instantiate(GameManager.Instance.SelectPositionTagPrefab, pos, Quaternion.identity);
+        go.SetActive(true);
+        ShowTargetList.Add(go);
+
+        pos = GameManager.GetPosition(tarx, tary);
+        go = GameObject.Instantiate(GameManager.Instance.SelectDirectionTagPrefab, pos, Quaternion.Euler(0, 0, 60f * tarf));
+        go.SetActive(true);
+        ShowTargetList.Add(go);
+    }
     public override async UniTask<bool> UseCard(Player usr)
     {
         if (usr.CommandCount <= 0) return false;
@@ -125,6 +154,13 @@ public class ZhuanYi : Skill
 public class CeFan : Skill
 {
     Piece tar;
+    public override void ShowTarget()
+    {
+        Vector2 pos = GameManager.GetPosition(tar.xpos, tar.ypos);
+        GameObject go = GameObject.Instantiate(GameManager.Instance.SelectPositionTagPrefab, pos, Quaternion.identity);
+        go.SetActive(true);
+        ShowTargetList.Add(go);
+    }
     public CeFan() : base()
     {
         cardName = "策反";
@@ -166,6 +202,13 @@ public class CeFan : Skill
 public class JinGu : Skill
 {
     Piece tar;
+    public override void ShowTarget()
+    {
+        Vector2 pos = GameManager.GetPosition(tar.xpos, tar.ypos);
+        GameObject go = GameObject.Instantiate(GameManager.Instance.SelectPositionTagPrefab, pos, Quaternion.identity);
+        go.SetActive(true);
+        ShowTargetList.Add(go);
+    }
     public JinGu() : base()
     {
         cardName = "禁锢";
@@ -204,6 +247,13 @@ public class JinGu : Skill
 public class HuoQiu : Skill
 {
     int tarx, tary;
+    public override void ShowTarget()
+    {
+        Vector2 pos = GameManager.GetPosition(tarx, tary);
+        GameObject go = GameObject.Instantiate(GameManager.Instance.SelectPositionTagPrefab, pos, Quaternion.identity);
+        go.SetActive(true);
+        ShowTargetList.Add(go);
+    }
     public HuoQiu() : base()
     {
         cardName = "火球";
@@ -236,8 +286,11 @@ public class HuoQiu : Skill
             {
                 e.TakeDamage(null, 6);
                 if (e is LoadAble ve)
-                    foreach (Piece p in ve.onLoad.OfType<Piece>())
+                {
+                    List<Piece> pbuf = ve.onLoad.OfType<Piece>();
+                    foreach (Piece p in pbuf)
                         p.TakeDamage(null, 6);
+                }
             }
         }
         Piece ee = GameManager.Instance.GetTile(tarx, tary)?.onTile;
@@ -245,8 +298,11 @@ public class HuoQiu : Skill
         {
             ee.TakeDamage(null, 6);
             if (ee is LoadAble ve)
-                foreach (Piece p in ve.onLoad.OfType<Piece>())
+            {
+                List<Piece> pbuf = ve.onLoad.OfType<Piece>();
+                foreach (Piece p in pbuf)
                     p.TakeDamage(null, 6);
+            }
         }
         
         GameManager.Instance.DiscardCard(this);
@@ -256,6 +312,13 @@ public class HuoQiu : Skill
 public class GunMu : Skill
 {
     int tarx, tary, tarf;
+    public override void ShowTarget()
+    {
+        Vector2 pos = GameManager.GetPosition(tarx, tary);
+        GameObject go = GameObject.Instantiate(GameManager.Instance.SelectDirectionTagPrefab, pos, Quaternion.Euler(0, 0, 60f * tarf));
+        go.SetActive(true);
+        ShowTargetList.Add(go);
+    }
     public GunMu() : base()
     {
         cardName = "滚木";
@@ -292,10 +355,13 @@ public class GunMu : Skill
             Piece e = GameManager.Instance.GetTile(tarx + i * dx[tarf], tary + i * dy[tarf])?.onTile;
             if (e != null)
             {
-                e.TakeDamage(null, 6);
                 if (e is LoadAble ve)
-                    foreach (Piece p in ve.onLoad.OfType<Piece>())
+                {
+                    List<Piece> pbuf = ve.onLoad.OfType<Piece>();
+                    foreach (Piece p in pbuf)
                         p.TakeDamage(null, 6);
+                }
+                e.TakeDamage(null, 6);
                 if (e is not ICanBanKnock) e.Knockback(tarf);
             }
         }
@@ -308,6 +374,13 @@ public class GunMu : Skill
 public class JuFeng : Skill
 {
     int tarx, tary, tarf;
+    public override void ShowTarget()
+    {
+        Vector2 pos = GameManager.GetPosition(tarx, tary);
+        GameObject go = GameObject.Instantiate(GameManager.Instance.SelectDirectionTagPrefab, pos, Quaternion.Euler(0, 0, 60f * tarf));
+        go.SetActive(true);
+        ShowTargetList.Add(go);
+    }
     public JuFeng() : base()
     {
         cardName = "飓风";
@@ -344,10 +417,13 @@ public class JuFeng : Skill
             Piece e = GameManager.Instance.GetTile(tarx + i * dx[tarf], tary + i * dy[tarf])?.onTile;
             if (e != null)
             {
-                e.TakeDamage(null, 3, true);
                 if (e is LoadAble ve)
-                    foreach (Piece p in ve.onLoad.OfType<Piece>())
-                        p.TakeDamage(null, 3, true);
+                {
+                    List<Piece> pbuf = ve.onLoad.OfType<Piece>();
+                    foreach (Piece p in pbuf)
+                        p.TakeDamage(null, 3,true);
+                }
+                e.TakeDamage(null, 3, true);
                 if (e is not ICanBanKnock) e.ForceMove(tarf);
             }
         }
@@ -465,6 +541,13 @@ public class TianJia : Skill
 public class YiDong : Skill
 {
     int tarx, tary;
+    public override void ShowTarget()
+    {
+        Vector2 pos = GameManager.GetPosition(tarx, tary);
+        GameObject go = GameObject.Instantiate(GameManager.Instance.SelectPositionTagPrefab, pos, Quaternion.identity);
+        go.SetActive(true);
+        ShowTargetList.Add(go);
+    }
     public YiDong() : base()
     {
         cardName = "移动棋盘块";
@@ -604,6 +687,13 @@ public class YiDong : Skill
 public class XiuGai : Skill
 {
     int tarx, tary;
+    public override void ShowTarget()
+    {
+        Vector2 pos = GameManager.GetPosition(tarx, tary);
+        GameObject go = GameObject.Instantiate(GameManager.Instance.SelectPositionTagPrefab, pos, Quaternion.identity);
+        go.SetActive(true);
+        ShowTargetList.Add(go);
+    }
     public XiuGai() : base()
     {
         cardName = "修改地形";

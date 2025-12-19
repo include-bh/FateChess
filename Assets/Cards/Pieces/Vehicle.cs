@@ -67,6 +67,7 @@ public class Truck : Vehicle
     }
     public override async UniTask TakeAction()
     {
+        if (buffs.Any(p => p is Stun)) return;
         bool ok = false;
         if (canAct)
         {
@@ -107,7 +108,7 @@ public class Glider : Vehicle
     public override void InitCard()
     {
         base.InitCard();
-        maxHP = HP = 3;
+        maxHP = HP = 5;
         AT = 7;
         maxDF = DF = 0;
         RA = 0;
@@ -170,6 +171,7 @@ public class Glider : Vehicle
     }
     public override async UniTask TakeAction()
     {
+        if (buffs.Any(p => p is Stun)) return;
         bool ok = false;
         if (canAct)
         {

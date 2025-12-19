@@ -181,7 +181,7 @@ public class Player
     public virtual async UniTask<Piece> SelectTargetOnLoad(LoadAble ve,List<Piece> TargetSet)
     {
         if (TargetSet.Count == 0) return null;
-        if (TargetSet.Count == 1) return TargetSet[0];
+        //if (TargetSet.Count == 1) return TargetSet[0];
 
         UIManager.Instance.SwitchToSelectUI();
         UIManager.Instance.FinishButton.gameObject.SetActive(false);
