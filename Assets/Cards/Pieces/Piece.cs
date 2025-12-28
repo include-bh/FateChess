@@ -218,6 +218,7 @@ public class Piece : Card
 
     public virtual void TakeDamage(Piece e, int dmg, bool isPierce = false)
     {
+        if (status != CardStatus.OnBoard) return;
         if (e == null && GameManager.Instance.curPlayer == player) dmg /= 3;
         if(TakeDamageModifier!=null)
         foreach (DamageModifier modifier in TakeDamageModifier.GetInvocationList())
@@ -325,6 +326,8 @@ public class Piece : Card
             (xpos, ypos) = (buf[0].xpos, buf[0].ypos);
             UpdateOnBoardPosition();
             pieceRenderer?.UpdatePosition();
+            if(this is LoadAble ve)foreach (Piece x in ve.onLoad.OfType<Piece>())
+                (x.xpos, x.ypos) = (ve.xpos, ve.ypos);
         }
         else OnDeath();
     }
@@ -348,6 +351,8 @@ public class Piece : Card
         }
         else {
             UpdateOnBoardPosition();
+            if(this is LoadAble ve)foreach (Piece x in ve.onLoad.OfType<Piece>())
+                (x.xpos, x.ypos) = (ve.xpos, ve.ypos);
         }
     }
 

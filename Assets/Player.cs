@@ -43,6 +43,7 @@ public class Player
     public virtual async UniTask OnMyTurn(int cmd)
     {
         GameManager.Instance.curPlayer = this;
+        UIManager.Instance.ShowPlayerSwitch(this);
         UIManager.Instance.SetCurPlayer(this);
         CommandCount = cmd;
         foreach (Piece x in onBoardList)
@@ -59,15 +60,18 @@ public class Player
         await TurnEndTcs.Task;
     }
 
-    public UniTaskCompletionSource<(int,int)> PositionTcs;
-    public virtual async UniTask<(int, int)> SelectPosition(List<(int, int)> PosSet)
+    public UniTaskCompletionSource<(int, int)> PositionTcs;
+    public UniTaskCompletionSource<int> DirectionTcs;
+    public UniTaskCompletionSource TargetTcs;
+
+
+    public virtual async UniTask<(int, int)> SelectPosition(List<(int, int)> PosSet, bool canCancel = false)
     {
         UIManager.Instance.SwitchToSelectUI();
-        UIManager.Instance.FinishButton.gameObject.SetActive(false);
 
         PositionTcs = new UniTaskCompletionSource<(int, int)>();
 
-        List<SelectPositionTag> PositionTags=new List<SelectPositionTag>();
+        List<SelectPositionTag> PositionTags = new List<SelectPositionTag>();
         foreach (var (x, y) in PosSet)
         {
             Vector2 pos = GameManager.GetPosition(x, y);
@@ -79,19 +83,36 @@ public class Player
         }
         GameManager.Instance.raycaster.eventMask = LayerMask.GetMask("SelectTag");
 
-        var (resx, resy) = await PositionTcs.Task;
-        
-        foreach (var tag in PositionTags)
-            GameObject.Destroy(tag.gameObject);
-        PositionTags.Clear();
-        GameManager.Instance.raycaster.eventMask = LayerMask.GetMask("Piece");
-        
-        UIManager.Instance.SwitchToNormalUI();
-        return (resx,resy);
+        try
+        {
+            if (canCancel)
+            {
+                UIManager.Instance.FinishButton.gameObject.SetActive(true);
+                TargetTcs = new UniTaskCompletionSource();
+                UIManager.Instance.FinishSelect += () => { TargetTcs?.TrySetResult(); };
+                var tasks = new[] { PositionTcs.Task, TargetTcs.Task };
+                int win = await UniTask.WhenAny(tasks);
+                if (win == 0) return await PositionTcs.Task;
+                else return (9999, 9999);
+            }
+            else
+            {
+                UIManager.Instance.FinishButton.gameObject.SetActive(false);
+                return await PositionTcs.Task;
+            }
+        }
+        finally
+        {
+            foreach (var tag in PositionTags)
+                GameObject.Destroy(tag.gameObject);
+            PositionTags.Clear();
+            GameManager.Instance.raycaster.eventMask = LayerMask.GetMask("Piece");
+            UIManager.Instance.ClearFinish();
+            UIManager.Instance.SwitchToNormalUI();
+        }
     }
 
 
-    public UniTaskCompletionSource<int> DirectionTcs;
     public virtual async UniTask<int> SelectDirection(int xpos, int ypos, bool rot = false)
     {
         UIManager.Instance.SwitchToSelectUI();
@@ -122,51 +143,16 @@ public class Player
         return res;
     }
 
-    public UniTaskCompletionSource TargetTcs;
     public virtual async UniTask<Piece> SelectTarget(List<Piece> TargetSet)
     {
         if (TargetSet.Count == 0) return null;
-        UIManager.Instance.SwitchToSelectUI();
-        UIManager.Instance.FinishButton.gameObject.SetActive(true);
+        HashSet<(int, int)> PosSet = TargetSet.Select(tile => (tile.xpos, tile.ypos)).ToHashSet();
 
-        PositionTcs = new UniTaskCompletionSource<(int, int)>();
-        TargetTcs = new UniTaskCompletionSource();
+        var (tarx, tary) = await SelectPosition(PosSet.ToList(), true);
 
-        List<(int, int)> PosSet = TargetSet.Select(tile => (tile.xpos, tile.ypos)).ToList();
+        if (tarx == 9999 && tary == 9999) return null;
 
-        List<SelectPositionTag> PositionTags=new List<SelectPositionTag>();
-        foreach (var (x, y) in PosSet)
-        {
-            Vector2 pos = GameManager.GetPosition(x, y);
-            GameObject go = GameObject.Instantiate(GameManager.Instance.SelectPositionTagPrefab, pos, Quaternion.identity);
-            SelectPositionTag tag = go.GetComponent<SelectPositionTag>();
-            tag.xpos = x; tag.ypos = y; tag.player = this;
-            PositionTags.Add(tag);
-            go.SetActive(true);
-        }
-        GameManager.Instance.raycaster.eventMask = LayerMask.GetMask("SelectTag");
-
-        UIManager.Instance.FinishSelect += () => { TargetTcs?.TrySetResult(); };
-
-        var tasks = new[] { PositionTcs.Task, TargetTcs.Task };
-        int win = await UniTask.WhenAny(tasks);
-        UIManager.Instance.ClearFinish();
-            
-
-        foreach (var tag in PositionTags)
-            GameObject.Destroy(tag.gameObject);
-        PositionTags.Clear();
-        GameManager.Instance.raycaster.eventMask = LayerMask.GetMask("Piece");
-        UIManager.Instance.SwitchToNormalUI();
-
-        if (win == 1)return null;
-
-        var (resx, resy) = await PositionTcs.Task;
-        Tile tile = GameManager.Instance.GetTile(resx, resy);
-        Piece tar = tile.onTile;
-
-        GameManager.Instance.raycaster.eventMask = LayerMask.GetMask("Piece");
-        UIManager.Instance.SwitchToNormalUI();
+        Piece tar = GameManager.Instance.GetTile(tarx, tary).onTile;
 
         if (tar is LoadAble ve)
         {
@@ -178,7 +164,8 @@ public class Player
         }
         else return tar;
     }
-    public virtual async UniTask<Piece> SelectTargetOnLoad(LoadAble ve,List<Piece> TargetSet)
+
+    public virtual async UniTask<Piece> SelectTargetOnLoad(LoadAble ve, List<Piece> TargetSet)
     {
         if (TargetSet.Count == 0) return null;
         //if (TargetSet.Count == 1) return TargetSet[0];
@@ -201,7 +188,7 @@ public class Player
             DirectionTags.Add(tag);
             go.SetActive(true);
 
-            Vector2 pos2 = pos + GameManager.SelectTargetPos[i]*1.2f;
+            Vector2 pos2 = pos + GameManager.SelectTargetPos[i] * 1.2f;
             GameObject go2 = GameObject.Instantiate(GameManager.Instance.BoardPiecePrefab, pos2, Quaternion.identity);
             BoardPieceRenderer rend = go2.GetComponent<BoardPieceRenderer>();
             rend.data = TargetSet[i];
@@ -225,9 +212,24 @@ public class Player
 
         return TargetSet[res];
     }
+    
+    public virtual async UniTask EditTileList(List<Tile> tiles)
+    {
+        GameManager.Instance.raycaster.eventMask = LayerMask.GetMask("Tile");
+        UIManager.Instance.SwitchToSelectUI();
+        UIManager.Instance.FinishButton.gameObject.SetActive(true);
+
+        UniTaskCompletionSource tcs = new UniTaskCompletionSource();
+        UIManager.Instance.FinishSelect += () => { tcs?.TrySetResult(); };
+        await tcs.Task;
+        UIManager.Instance.ClearFinish();
+
+        GameManager.Instance.raycaster.eventMask = LayerMask.GetMask("Piece");
+        UIManager.Instance.SwitchToNormalUI();
+    }
 
 
-    public async UniTask UseCard(int id)
+    public virtual async UniTask UseCard(int id)
     {
         Card used = hand[id];
         if (await used.UseCard(this))
@@ -235,7 +237,7 @@ public class Player
         await UpdateHandCard();
     }
 
-    public async UniTask UpdateHandCard()
+    public virtual async UniTask UpdateHandCard()
     {
         List<UniTask> tasks = new List<UniTask>();
         for (int i = 0; i < 4; i++) if (hand[i] == null)
@@ -249,7 +251,7 @@ public class Player
             await UniTask.WhenAll(tasks);
     }
 
-    public async UniTask RefreshCard()
+    public virtual async UniTask RefreshCard()
     {
         if (CommandCount <= 0) return;
         --CommandCount;
@@ -261,7 +263,7 @@ public class Player
         await UpdateHandCard();
     }
     
-    public async UniTask InitUI()
+    public virtual async UniTask InitUI()
     {
         List<UniTask> tasks = new List<UniTask>();
         UIManager.Instance.SetCurPlayer(this);
@@ -275,7 +277,7 @@ public class Player
             if(hand[i] is WuXie)return true;
         return false;
     }
-    public async UniTask<bool> useWuXie(Skill skill, Player usr, bool status)
+    public virtual async UniTask<bool> useWuXie(Skill skill, Player usr, bool status)
     {
         UIManager.Instance.WuXieTitle.text = $"玩家{usr.id}正在使用【{skill.cardName}】，即将{(status ? "生效" : "失效")}，是否使用无懈可击？";
         UIManager.Instance.SwitchToWuXieUI();

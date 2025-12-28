@@ -44,6 +44,7 @@ public class UIRenderer : CardRenderer, IPointerEnterHandler, IPointerClickHandl
     );
     public async UniTask FlyIn()
     {
+        gameObject.SetActive(true);
         float elapsed = 0f;
         float startY = -150f;
         float targetX = UIManager.UIXpos[pos];

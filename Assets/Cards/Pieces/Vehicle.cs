@@ -162,12 +162,33 @@ public class Glider : Vehicle
         Piece e = GameManager.Instance.GetTile(nx, ny).onTile;
         if (e != null)
         {
-            DealDamage(e, AT, true);
             if (e is LoadAble ve)
-                foreach (Piece x in ve.onLoad.OfType<Piece>())
+            {
+                List<Piece> pbuf = ve.onLoad.OfType<Piece>().ToList();
+                foreach (Piece x in pbuf)
                     DealDamage(x, AT, true);
+            }
+            DealDamage(e, AT, true);
         }
         OnDeath();
+    }
+    public override async UniTask OnDeath()
+    {
+        tile = GameManager.Instance.GetTile(xpos, ypos);
+        List<Piece> buf = onLoad.OfType<Piece>().ToList();
+        foreach (Piece p in buf)
+        {
+            if (tile.onTile == null && (p.canSwim > 0 || tile.type != Terrain.Water))
+            {
+                p.xpos = this.xpos;
+                p.ypos = this.ypos;
+                p.UpdateOnBoardPosition();
+            }
+            else p.ForceMove();
+        }
+        onLoad.Clear();
+        tile = null;
+        await base.OnDeath();
     }
     public override async UniTask TakeAction()
     {

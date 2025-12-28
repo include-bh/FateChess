@@ -32,7 +32,8 @@ public class UIPieceRenderer : UIRenderer,IPieceRenderer
             if (piece.AT != 0)
             {
                 ATText.text = piece.AT.ToString();
-                RAText.text = piece.RA.ToString();
+                if (piece.RA != 0) RAText.text = piece.RA.ToString();
+                else RAText.text = "";
             }
             else
             {

@@ -59,12 +59,12 @@ public class TuXi : Skill
         if (tar == null) return false;
 
         --usr.CommandCount;
-    
+
         List<(int, int)> buf = GameManager.Instance.tiles
             .Where(pii => pii.Value.onTile == null)
             .Select(pii => pii.Key)
             .ToList();
-        if (tar.tile.onTile == tar) buf.Add((tar.xpos, tar.ypos));
+        buf.Add((tar.xpos, tar.ypos));
 
         (tarx, tary) = await usr.SelectPosition(buf);
         tarf = await player.SelectDirection(tarx,tary);
@@ -80,6 +80,9 @@ public class TuXi : Skill
         tar.UpdateOnBoardPosition();
         tar.pieceRenderer.UpdatePosition();
         tar.pieceRenderer.UpdateRotation();
+        
+        if(tar is LoadAble ve)foreach (Piece x in ve.onLoad.OfType<Piece>())
+            (x.xpos, x.ypos) = (ve.xpos, ve.ypos);
 
         tar.canAct = true;
 
@@ -164,7 +167,7 @@ public class CeFan : Skill
     public CeFan() : base()
     {
         cardName = "策反";
-        cardDescription = "使任意非己方单位视作己方单位，由己方操作行动一次。";
+        cardDescription = "使任意非使用者方单位视作使用者方单位，由使用者操作行动一次。如此次行动中消耗令咒，则由使用者支付。";
         sprite = GameManager.Instance.skillAtlas.GetSprite("CeFan");
     }
     public override async UniTask<bool> UseCard(Player usr)
@@ -277,6 +280,8 @@ public class HuoQiu : Skill
             GameManager.Instance.DiscardCard(this);
             return true;
         }
+        
+        GameManager.Instance.OnHitAudioPlayer.Play();
 
         for (int i = 0; i < 6; i++)
         {
@@ -284,25 +289,25 @@ public class HuoQiu : Skill
             Piece e = GameManager.Instance.GetTile(nx, ny)?.onTile;
             if (e != null)
             {
-                e.TakeDamage(null, 6);
                 if (e is LoadAble ve)
                 {
-                    List<Piece> pbuf = ve.onLoad.OfType<Piece>();
+                    List<Piece> pbuf = ve.onLoad.OfType<Piece>().ToList();
                     foreach (Piece p in pbuf)
                         p.TakeDamage(null, 6);
                 }
+                e.TakeDamage(null, 6);
             }
         }
         Piece ee = GameManager.Instance.GetTile(tarx, tary)?.onTile;
         if (ee != null)
         {
-            ee.TakeDamage(null, 6);
             if (ee is LoadAble ve)
             {
-                List<Piece> pbuf = ve.onLoad.OfType<Piece>();
+                List<Piece> pbuf = ve.onLoad.OfType<Piece>().ToList();
                 foreach (Piece p in pbuf)
                     p.TakeDamage(null, 6);
             }
+            ee.TakeDamage(null, 6);
         }
         
         GameManager.Instance.DiscardCard(this);
@@ -315,7 +320,7 @@ public class GunMu : Skill
     public override void ShowTarget()
     {
         Vector2 pos = GameManager.GetPosition(tarx, tary);
-        GameObject go = GameObject.Instantiate(GameManager.Instance.SelectDirectionTagPrefab, pos, Quaternion.Euler(0, 0, 60f * tarf));
+        GameObject go = GameObject.Instantiate(GameManager.Instance.SelectDirectionTagPrefab, pos, Quaternion.Euler(0, 0, 60f * tarf - 30));
         go.SetActive(true);
         ShowTargetList.Add(go);
     }
@@ -350,6 +355,8 @@ public class GunMu : Skill
             return true;
         }
 
+        GameManager.Instance.OnHitAudioPlayer.Play();
+
         for (int i = 3; i >= 0; i--)
         {
             Piece e = GameManager.Instance.GetTile(tarx + i * dx[tarf], tary + i * dy[tarf])?.onTile;
@@ -357,12 +364,12 @@ public class GunMu : Skill
             {
                 if (e is LoadAble ve)
                 {
-                    List<Piece> pbuf = ve.onLoad.OfType<Piece>();
+                    List<Piece> pbuf = ve.onLoad.OfType<Piece>().ToList();
                     foreach (Piece p in pbuf)
                         p.TakeDamage(null, 6);
                 }
-                e.TakeDamage(null, 6);
                 if (e is not ICanBanKnock) e.Knockback(tarf);
+                if (e.status == CardStatus.OnBoard) e.TakeDamage(null, 6);
             }
         }
         
@@ -377,7 +384,7 @@ public class JuFeng : Skill
     public override void ShowTarget()
     {
         Vector2 pos = GameManager.GetPosition(tarx, tary);
-        GameObject go = GameObject.Instantiate(GameManager.Instance.SelectDirectionTagPrefab, pos, Quaternion.Euler(0, 0, 60f * tarf));
+        GameObject go = GameObject.Instantiate(GameManager.Instance.SelectDirectionTagPrefab, pos, Quaternion.Euler(0, 0, 60f * tarf - 30));
         go.SetActive(true);
         ShowTargetList.Add(go);
     }
@@ -406,11 +413,13 @@ public class JuFeng : Skill
         (tarx,tary) = await usr.SelectPosition(buf.ToList());
         tarf = await usr.SelectDirection(tarx,tary, true);
 
-        if (!await GameManager.Instance.AskForWuXie(this,usr))
+        if (!await GameManager.Instance.AskForWuXie(this, usr))
         {
             GameManager.Instance.DiscardCard(this);
             return true;
         }
+        
+        GameManager.Instance.OnHitAudioPlayer.Play();
 
         for (int i = 3; i >= 0; i--)
         {
@@ -419,12 +428,12 @@ public class JuFeng : Skill
             {
                 if (e is LoadAble ve)
                 {
-                    List<Piece> pbuf = ve.onLoad.OfType<Piece>();
+                    List<Piece> pbuf = ve.onLoad.OfType<Piece>().ToList();
                     foreach (Piece p in pbuf)
                         p.TakeDamage(null, 3,true);
                 }
-                e.TakeDamage(null, 3, true);
                 if (e is not ICanBanKnock) e.ForceMove(tarf);
+                if (e.status == CardStatus.OnBoard) e.TakeDamage(null, 3, true);
             }
         }
         
@@ -519,18 +528,8 @@ public class TianJia : Skill
             for (int i = 0; i < 7; i++)
                 tiles.Add(GameManager.Instance.AddTile(xx + dx[i], yy + dy[i], Terrain.Plain, i == 6));
 
+            usr.EditTileList(tiles);
 
-            GameManager.Instance.raycaster.eventMask = LayerMask.GetMask("Tile");
-            UIManager.Instance.SwitchToSelectUI();
-            UIManager.Instance.FinishButton.gameObject.SetActive(true);
-
-            UniTaskCompletionSource tcs = new UniTaskCompletionSource();
-            UIManager.Instance.FinishSelect += () => { tcs?.TrySetResult(); };
-            await tcs.Task;
-            UIManager.Instance.ClearFinish();
-
-            GameManager.Instance.raycaster.eventMask = LayerMask.GetMask("Piece");
-            UIManager.Instance.SwitchToNormalUI();
             foreach (Tile t in tiles) t.isEditable = false;
             GameManager.Instance.DiscardCard(this);
             return true;
@@ -613,35 +612,11 @@ public class YiDong : Skill
                 buf.Remove((x + dx[i], y + dy[i]));
         }
 
-        UIManager.Instance.SwitchToSelectUI();
-        UIManager.Instance.FinishButton.gameObject.SetActive(true);
-        usr.PositionTcs = new UniTaskCompletionSource<(int, int)>();
-        usr.TargetTcs = new UniTaskCompletionSource();
-        List<(int, int)> PosSet = buf.ToList();
-        List<SelectPositionTag> PositionTags=new List<SelectPositionTag>();
-        foreach (var (x, y) in PosSet)
-        {
-            Vector2 pos = GameManager.GetPosition(x, y);
-            GameObject go = GameObject.Instantiate(GameManager.Instance.SelectPositionTagPrefab, pos, Quaternion.identity);
-            SelectPositionTag tag = go.GetComponent<SelectPositionTag>();
-            tag.xpos = x; tag.ypos = y; tag.player = usr;
-            PositionTags.Add(tag);
-            go.SetActive(true);
-        }
-        GameManager.Instance.raycaster.eventMask = LayerMask.GetMask("SelectTag");
-        UIManager.Instance.FinishSelect += () => { usr.TargetTcs?.TrySetResult(); };
-        var tasks = new[] { usr.PositionTcs.Task, usr.TargetTcs.Task };
-        int win = await UniTask.WhenAny(tasks);
-        UIManager.Instance.ClearFinish();
-        foreach (var tag in PositionTags)
-            GameObject.Destroy(tag.gameObject);
-        PositionTags.Clear();
-        GameManager.Instance.raycaster.eventMask = LayerMask.GetMask("Piece");
-        UIManager.Instance.SwitchToNormalUI();
+        (tarx, tary) = await usr.SelectPosition(buf.ToList(), true);
 
-        if (win == 1)
+        if (tarx==9999 && tary==9999)
         {
-            foreach(Tile t in tilebuf)
+            foreach (Tile t in tilebuf)
             {
                 Piece x = t.onTile;
                 if (x != null)
@@ -650,26 +625,25 @@ public class YiDong : Skill
                         foreach (Piece p in ve.onLoad.OfType<Piece>()) p.OnDeath();
                     x.OnDeath();
                 }
-                GameObject.Destroy(t.gameObject,0.01f);
+                GameObject.Destroy(t.gameObject, 0.01f);
             }
         }
         else
         {
-            (tarx, tary) = await usr.PositionTcs.Task;
             int tarf = await usr.SelectDirection(tarx, tary);
-            for(int i = 0; i < 7; i++)
+            for (int i = 0; i < 7; i++)
             {
                 int x = tarx + dx[(i + tarf) % 6], y = tary + dy[(i + tarf) % 6];
-                if(i==6){ x = tarx; y = tary; }
+                if (i == 6) { x = tarx; y = tary; }
                 GameManager.Instance.tiles[(x, y)] = tilebuf[i];
                 tilebuf[i].xpos = x;
                 tilebuf[i].ypos = y;
                 if (tilebuf[i].onTile != null)
                 {
                     Piece p = tilebuf[i].onTile;
-                    p.xpos = x;p.ypos = y;
+                    p.xpos = x; p.ypos = y;
                     p.facing = (p.facing + tarf) % 6;
-                    if(p.renderer is BoardPieceRenderer bp)
+                    if (p.renderer is BoardPieceRenderer bp)
                     {
                         bp.InitPosition(x, y);
                         bp.InitRotation(p.facing);
@@ -720,19 +694,12 @@ public class XiuGai : Skill
 
         Tile t = GameManager.Instance.GetTile(tarx, tary);
         t.isEditable = true;
-        
-        GameManager.Instance.raycaster.eventMask = LayerMask.GetMask("Tile");
-        UIManager.Instance.SwitchToSelectUI();
-        UIManager.Instance.FinishButton.gameObject.SetActive(true);
 
-        UniTaskCompletionSource tcs = new UniTaskCompletionSource();
-        UIManager.Instance.FinishSelect += () => { tcs?.TrySetResult(); };
-        await tcs.Task;
+        List<Tile> buf = new List<Tile>();
+        buf.Add(t);
 
-        GameManager.Instance.raycaster.eventMask = LayerMask.GetMask("Piece");
-        UIManager.Instance.SwitchToNormalUI();
-        t.isEditable = false;
-        
+        usr.EditTileList(buf);
+
         GameManager.Instance.DiscardCard(this);
         return true;
     }

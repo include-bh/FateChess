@@ -32,6 +32,7 @@ public class UnitBase : LoadAble, ICanBanMove
     }
     public override void TakeDamage(Piece e, int dmg, bool isPierce = false)
     {
+        if (status != CardStatus.OnBoard) return;
         if (e == null || GameManager.Instance.curPlayer == player) dmg /= 3;
         if(TakeDamageModifier!=null)
         foreach (DamageModifier modifier in TakeDamageModifier.GetInvocationList())

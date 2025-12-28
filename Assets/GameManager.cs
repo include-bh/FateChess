@@ -67,6 +67,8 @@ public class GameManager : MonoBehaviour
     public GameObject BoardPiecePrefab;
     public GameObject AttackEffectPrefab;
 
+    public AudioSource OnHitAudioPlayer;
+
     public Physics2DRaycaster raycaster;
 
     public static event Action OnFlushCard;
@@ -257,7 +259,8 @@ public class GameManager : MonoBehaviour
 
     public async UniTask StartGame()
     {
-        CardPile[0] = new Truck();
+        CardPile[0] = new Glider();
+        CardPile[1] = new Rider();
         for (int i = 0; i < players.Count; i++)
         {
             Master mas = new Master();
@@ -274,13 +277,14 @@ public class GameManager : MonoBehaviour
 
             (mas.xpos, mas.ypos) = await players[i].SelectPosition(buf);
             mas.facing = await players[i].SelectDirection(mas.xpos, mas.ypos);
-
-            mas.tile = GetTile(mas.xpos, mas.ypos); mas.tile.onTile = mas;
             mas.status = CardStatus.OnBoard;
+
             GameObject go = Instantiate(BoardPiecePrefab);
             mas.renderer = go.GetComponent<BoardPieceRenderer>();
             mas.renderer.data = mas;
             mas.renderer.InitSprite();
+
+            mas.UpdateOnBoardPosition();
 
             for (int j = 0; j < 4; j++)
             {
@@ -344,6 +348,11 @@ public class GameManager : MonoBehaviour
     public void SetLose(Player player)
     {
         while (player.onBoardList.Count > 0) player.onBoardList[0].OnDeath();
+        for (int i = 0; i < 4; i++)
+        {
+            DiscardCard(player.hand[i]);
+            player.hand[i] = null;
+        }
         player.dead = true;
         if (UIManager.Instance.curPlayer == player)
         {

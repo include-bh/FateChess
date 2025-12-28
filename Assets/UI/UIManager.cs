@@ -25,6 +25,8 @@ public class UIManager : MonoBehaviour//, IPointerEnterHandler, IPointerExitHand
     public Player curPlayer = null;
     public List<UIRenderer> CardSlot=new List<UIRenderer>();
     public GameObject curUI;
+    public GameObject PlayerSwitchUI;
+    public Image ShowCurPlayer;
 
     [Header("常态UI")]
     public GameObject NormalUI;
@@ -100,6 +102,18 @@ public class UIManager : MonoBehaviour//, IPointerEnterHandler, IPointerExitHand
         }
     }
 
+
+    public async UniTask ShowPlayerSwitch(Player player)
+    {
+        PlayerSwitchUI.SetActive(true);
+        if (GameManager.Instance.playerAtlas != null)
+        {
+            string bgName = $"Player{player.id}";
+            ShowCurPlayer.sprite = GameManager.Instance.playerAtlas.GetSprite(bgName);
+        }
+        await UniTask.Delay(1000);
+        PlayerSwitchUI.SetActive(false);
+    }
     
     public void SwitchToSelectUI()
     {

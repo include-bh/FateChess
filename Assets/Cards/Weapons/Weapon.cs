@@ -23,6 +23,8 @@ public class Weapon : Card
             .ToList()
         ) as Servant;
 
+        Debug.Log(tar);
+
         if (tar == null) return false;
 
         --usr.CommandCount;

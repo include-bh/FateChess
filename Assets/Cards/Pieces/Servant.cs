@@ -208,9 +208,15 @@ public class Assassin : Servant
     {
         EventManager.TriggerOnAttack(this, e);
 
-        if(DealDamageModifier!=null)
-        foreach (DamageModifier modifier in DealDamageModifier.GetInvocationList())
-            dmg = modifier(dmg, this, e);
+        if (DealDamageModifier != null)
+            foreach (DamageModifier modifier in DealDamageModifier.GetInvocationList())
+                dmg = modifier(dmg, this, e);
+            
+        GameObject go = GameObject.Instantiate(GameManager.Instance.AttackEffectPrefab);
+        AttackEffect ef = go.GetComponent<AttackEffect>();
+        ef.start = GameManager.GetPosition(xpos, ypos);
+        ef.end = GameManager.GetPosition(e.xpos, e.ypos);
+        ef.PlayAnimation();
 
         if (e.load == null && (((e.xpos - xpos == dx[e.facing]) && (e.ypos - ypos == dy[e.facing]))
          || ((e.xpos - xpos == dx[(e.facing + 1) % 6]) && (e.ypos - ypos == dy[(e.facing + 1) % 6]))))
@@ -245,6 +251,7 @@ public class Berserker : Servant
 
     public override void TakeDamage(Piece e, int dmg, bool isPierce = false)
     {
+        if (status != CardStatus.OnBoard) return;
         if (e == null && GameManager.Instance.curPlayer == player) dmg /= 3;
         if(TakeDamageModifier!=null)
         foreach (DamageModifier modifier in TakeDamageModifier.GetInvocationList())
