@@ -72,8 +72,8 @@ public class UnitBase : LoadAble, ICanBanMove
     {
         if (canAct)
         {
-            await Attack();
             canAct = false;
+            await Attack();
         }
     }
 }

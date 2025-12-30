@@ -376,33 +376,25 @@ public class Zabaniya : Weapon
     public Zabaniya() : base()
     {
         cardName = "诅咒之手";
-        cardDescription = "*仅Assassin装备时生效\n攻击力+1，移动力+1。获得【嗜血】：击败敌人后可再次行动，不可连续触发。";
+        cardDescription = "*仅Assassin装备时生效\n移动力+1。获得【嗜血】：击败敌人后可再次行动。";
         sprite = GameManager.Instance.weaponAtlas.GetSprite("Zabaniya");
     }
 
-    Buff buff = new Buff(1002,-1, "嗜血", "击败敌人后可再次行动，不可连续触发。");
-    int state = 0;
+    Buff buff = new Buff(1002, -1, "嗜血", "击败敌人后可再次行动。");
     public void modifier(Piece atk, Piece def)
     {
-        if (atk == owner && state == 0)
-        {
-            state = 1;
+        if (atk == owner)
             owner.canAct = true;
-            owner.TakeAction();
-            state = 0;
-        }
     }
 
     
     public override void OnInstall()
     {
         base.OnInstall();
-        state = 0;
         if(owner is Assassin)
         {
             EventManager.OnKill += modifier;
             owner.ST += 1;
-            owner.AT += 1;
             owner.buffs.Add(new Buff(buff));
             owner.pieceRenderer.UpdateData();
         }
@@ -414,7 +406,6 @@ public class Zabaniya : Weapon
         {
             EventManager.OnKill -= modifier;
             owner.ST -= 1;
-            owner.AT -= 1;
             owner.buffs.RemoveAll(buf => buf.id == buff.id);
             owner.pieceRenderer.UpdateData();
         }
@@ -544,10 +535,10 @@ public class CludeSpear : Weapon
     public CludeSpear() : base()
     {
         cardName = "溯时之枪";
-        cardDescription = "攻击力+1。获得【嗜血】：击败敌人后可再次行动，不可连续触发。";
+        cardDescription = "获得【嗜血】：击败敌人后可再次行动。";
         sprite = GameManager.Instance.weaponAtlas.GetSprite("CludeSpear");
     }
-    Buff buff = new Buff(2008,-1, "嗜血", "击败敌人后可再次行动，不可连续触发。");
+    Buff buff = new Buff(2008,-1, "嗜血", "击败敌人后可再次行动。");
     public override async UniTask<bool> UseCard(Player usr)
     {
         if (usr.CommandCount <= 0) return false;
@@ -581,31 +572,22 @@ public class CludeSpear : Weapon
         return true;
     }
     
-    int state = 0;
     public void modifier(Piece atk, Piece def)
     {
-        if (atk == owner && state == 0)
-        {
-            state = 1;
+        if (atk == owner)
             owner.canAct = true;
-            owner.TakeAction();
-            state = 0;
-        }
     }
     
     public override void OnInstall()
     {
         base.OnInstall();
-        state = 0;
         EventManager.OnKill += modifier;
         owner.buffs.Add(new Buff(buff));
-        owner.AT += 1;
         owner.pieceRenderer.UpdateData();
     }
     public override void OnRemove()
     {
         EventManager.OnKill -= modifier;
-        owner.AT -= 1;
         owner.buffs.RemoveAll(buf => buf.id == buff.id);
         owner.pieceRenderer.UpdateData();
         base.OnInstall();

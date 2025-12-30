@@ -292,9 +292,9 @@ public class Piece : Card
     {
         if (canAct)
         {
+            canAct = false;
             await Move();
             await Attack();
-            canAct = false;
         }
     }
 

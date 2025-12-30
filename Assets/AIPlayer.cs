@@ -436,7 +436,7 @@ public class AIPlayer : Player
             }
             else if (s is Lancer)
             {
-                bestGear = HasCard("溯时之枪") ? "溯时之枪" : (HasCard("穿刺死棘之枪") ? "穿刺死棘之枪" : null);
+                bestGear = HasCard("穿刺死棘之枪") ? "穿刺死棘之枪" : (HasCard("溯时之枪") ? "溯时之枪" : null);
             }
             else if (s is Caster)
             {
@@ -1367,6 +1367,16 @@ public class AIPlayer : Player
                 for (int i = 0; i < 4; i++)
                     if (hand[i] is WuXie)
                     {
+                        GameObject go = GameObject.Instantiate(UIManager.Instance.UICardPrefab, UIManager.Instance.canvas);
+                        UIRenderer rend = go.GetComponent<UIRenderer>();
+                        rend.data = hand[i];rend.pos = 0;
+                        rend.InitSprite();
+                        rend.rect.anchoredPosition = new Vector2(-725, 750);
+                        go.SetActive(true);
+                        await UniTask.Delay(2000);
+                        GameObject.Destroy(go);
+                        await UniTask.Delay(500);
+
                         GameManager.Instance.DiscardCard(hand[i]);
                         hand[i] = null;
                         return true;
@@ -1378,6 +1388,16 @@ public class AIPlayer : Player
             for (int i = 0; i < 4; i++)
                 if (hand[i] is WuXie)
                 {
+                    GameObject go = GameObject.Instantiate(UIManager.Instance.UICardPrefab, UIManager.Instance.canvas);
+                    UIRenderer rend = go.GetComponent<UIRenderer>();
+                    rend.data = hand[i];rend.pos = 0;
+                    rend.InitSprite();
+                    rend.rect.anchoredPosition = new Vector2(-725, 750);
+                    go.SetActive(true);
+                    await UniTask.Delay(2000);
+                    GameObject.Destroy(go);
+                    await UniTask.Delay(500);
+                        
                     GameManager.Instance.DiscardCard(hand[i]);
                     hand[i] = null;
                     return true;
