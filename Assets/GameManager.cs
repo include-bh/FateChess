@@ -259,12 +259,6 @@ public class GameManager : MonoBehaviour
 
     public async UniTask StartGame()
     {
-        CardPile[1] = new Assassin();
-        CardPile[2] = new Berserker();
-        
-        CardPile[4] = new Caster();
-        CardPile[5] = new Assassin();
-        CardPile[6] = new CludeSpear();
         for (int i = 0; i < players.Count; i++)
         {
             Master mas = new Master();

@@ -698,7 +698,8 @@ public class XiuGai : Skill
         List<Tile> buf = new List<Tile>();
         buf.Add(t);
 
-        usr.EditTileList(buf);
+        await usr.EditTileList(buf);
+        t.isEditable = false;
 
         GameManager.Instance.DiscardCard(this);
         return true;
